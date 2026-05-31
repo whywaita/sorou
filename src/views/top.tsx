@@ -56,6 +56,27 @@ export function TopPage(props: {
           />
         </div>
 
+        {/* Default start time (input assist only — not submitted, F-30) */}
+        <div>
+          <label
+            for="default-time"
+            class="block text-sm font-medium text-slate-700 mb-1"
+          >
+            デフォルト開始時刻
+          </label>
+          <div class="flex items-center gap-2">
+            <input
+              type="time"
+              id="default-time"
+              value="19:00"
+              class="px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand/30"
+            />
+            <span class="text-slate-400 text-xs">
+              〜（選んだ日に付与されます）
+            </span>
+          </div>
+        </div>
+
         {/* Dates */}
         <div>
           <label
@@ -64,6 +85,11 @@ export function TopPage(props: {
           >
             候補日時 <span class="text-red-500">*</span>
           </label>
+          {/* Calendar input assist — populated by client JS, empty without JS (F-30) */}
+          <div
+            id="calendar"
+            class="mb-2 border border-slate-200 rounded-md p-3 hidden"
+          />
           <textarea
             id="dates"
             name="dates"
@@ -89,6 +115,123 @@ export function TopPage(props: {
           イベントを作成
         </button>
       </form>
+      <script dangerouslySetInnerHTML={{ __html: calendarScript }} />
     </Layout>
   );
 }
+
+// 候補日入力補助のカレンダー（F-30）。
+// クライアントサイドでのみ動作し、JS 無効時は textarea への手入力にフォールバックする。
+const calendarScript = `
+(function () {
+  var cal = document.getElementById("calendar");
+  var dates = document.getElementById("dates");
+  var timeInput = document.getElementById("default-time");
+  if (!cal || !dates || !timeInput) return;
+  cal.classList.remove("hidden");
+
+  var WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
+  var now = new Date();
+  var view = { year: now.getFullYear(), month: now.getMonth() }; // month: 0-11
+
+  function pad(n) {
+    return n < 10 ? "0" + n : "" + n;
+  }
+
+  function insertDate(d) {
+    var t = timeInput.value || "19:00";
+    var w = WEEKDAYS[d.getDay()];
+    var line =
+      d.getMonth() + 1 + "/" + d.getDate() + "(" + w + ") " + t + "〜";
+    var cur = dates.value;
+    if (cur.length > 0 && cur.charAt(cur.length - 1) !== "\\n") {
+      dates.value = cur + "\\n" + line;
+    } else {
+      dates.value = cur + line;
+    }
+    dates.dispatchEvent(new Event("input", { bubbles: true }));
+  }
+
+  function renderCalendar() {
+    cal.textContent = "";
+
+    // ヘッダー（前月 / 当月表示 / 翌月）
+    var header = document.createElement("div");
+    header.className = "flex items-center justify-between mb-2";
+
+    var prev = document.createElement("button");
+    prev.type = "button";
+    prev.textContent = "‹";
+    prev.className =
+      "px-2 py-1 text-slate-500 hover:text-brand text-lg leading-none";
+    prev.addEventListener("click", function () {
+      view.month--;
+      if (view.month < 0) {
+        view.month = 11;
+        view.year--;
+      }
+      renderCalendar();
+    });
+
+    var label = document.createElement("span");
+    label.className = "text-sm font-medium text-slate-700";
+    label.textContent = view.year + "年 " + (view.month + 1) + "月";
+
+    var next = document.createElement("button");
+    next.type = "button";
+    next.textContent = "›";
+    next.className =
+      "px-2 py-1 text-slate-500 hover:text-brand text-lg leading-none";
+    next.addEventListener("click", function () {
+      view.month++;
+      if (view.month > 11) {
+        view.month = 0;
+        view.year++;
+      }
+      renderCalendar();
+    });
+
+    header.appendChild(prev);
+    header.appendChild(label);
+    header.appendChild(next);
+    cal.appendChild(header);
+
+    // 曜日行 + 日付グリッド
+    var grid = document.createElement("div");
+    grid.className = "grid grid-cols-7 gap-1 text-center text-sm";
+
+    for (var i = 0; i < WEEKDAYS.length; i++) {
+      var wd = document.createElement("div");
+      wd.className = "text-xs text-slate-400 py-1";
+      wd.textContent = WEEKDAYS[i];
+      grid.appendChild(wd);
+    }
+
+    var first = new Date(view.year, view.month, 1);
+    var startBlanks = first.getDay();
+    var daysInMonth = new Date(view.year, view.month + 1, 0).getDate();
+
+    for (var b = 0; b < startBlanks; b++) {
+      grid.appendChild(document.createElement("div"));
+    }
+
+    for (var day = 1; day <= daysInMonth; day++) {
+      (function (day) {
+        var btn = document.createElement("button");
+        btn.type = "button";
+        btn.textContent = "" + day;
+        btn.className =
+          "py-1 rounded hover:bg-brand hover:text-white text-slate-700 transition";
+        btn.addEventListener("click", function () {
+          insertDate(new Date(view.year, view.month, day));
+        });
+        grid.appendChild(btn);
+      })(day);
+    }
+
+    cal.appendChild(grid);
+  }
+
+  renderCalendar();
+})();
+`;

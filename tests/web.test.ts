@@ -20,6 +20,31 @@ function mockEmptyD1(): D1Database {
 
 const env = { DB: mockEmptyD1(), ADMIN_PASSWORD: "" };
 
+describe("GET /（トップページ・カレンダー入力補助 F-30）", () => {
+  it("デフォルト開始時刻フィールド（既定 19:00）を表示する", async () => {
+    const res = await app.request("/", {}, env);
+    const body = await res.text();
+    expect(body).toContain("デフォルト開始時刻");
+    expect(body).toContain('id="default-time"');
+    expect(body).toContain('value="19:00"');
+  });
+
+  it("カレンダーのコンテナと候補日 textarea を表示する", async () => {
+    const res = await app.request("/", {}, env);
+    const body = await res.text();
+    expect(body).toContain('id="calendar"');
+    expect(body).toContain('id="dates"');
+  });
+
+  it("日付クリックで textarea に挿入するクライアント JS を埋め込む", async () => {
+    const res = await app.request("/", {}, env);
+    const body = await res.text();
+    // 曜日ラベルと挿入フォーマットの一部がスクリプトに含まれる
+    expect(body).toContain("月");
+    expect(body).toContain("renderCalendar");
+  });
+});
+
 describe("GET /e/:id（存在しないイベント）", () => {
   it("HTTP 404 を返す", async () => {
     const res = await app.request("/e/nonexistent", {}, env);

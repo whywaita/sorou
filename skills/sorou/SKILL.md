@@ -31,11 +31,14 @@ sorou has 3 subcommands. Run `sorou help` to see all commands.
 sorou help      # list all subcommands
 ```
 
-The API endpoint defaults to `https://sorou.qh.nu`. Override with the `SOROU_API_URL` environment variable:
+**`SOROU_API_URL` is required** — the CLI will not work without it.
 
 ```bash
-export SOROU_API_URL=http://localhost:8787
+export SOROU_API_URL=https://<your-sorou-instance>
 ```
+
+If you don't know the sorou API URL, **ask the user** before attempting any sorou commands.
+Do not guess or assume a default domain.
 
 ## CLI Commands
 

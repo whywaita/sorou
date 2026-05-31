@@ -532,11 +532,11 @@
           <h1>🔒 管理画面</h1>
         </div>
 
-        <!-- 検索（F-24：イベント名 部分一致） -->
-        <form class="search-bar">
-          <div class="input">飲み</div>
-          <span class="copy-btn">🔍 検索</span>
-        </form>
+        <!-- 検索（F-24：イベント名 インクリメンタルフィルター / クライアントサイド） -->
+        <div class="search-bar">
+          <div class="input">🔍 飲み</div>
+        </div>
+        <p class="hint" style="margin:-8px 0 12px;">入力に応じてその場で行を絞り込み（ページ遷移・サーバー往復なし）</p>
 
         <!-- 削除確認（F-25：確認後に削除） -->
         <div class="confirm-overlay">
@@ -582,7 +582,7 @@
             </tr>
           </tbody>
         </table>
-        <p class="admin-count">全 12 件 / 「飲み」で絞り込み中</p>
+        <p class="admin-count">12 件中 1 件を表示（「飲み」で絞り込み中）</p>
 
         <div class="app-footer">sorou — powered by whywrite.it</div>
       </div>

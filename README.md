@@ -7,7 +7,7 @@
 - 🔓 **認証不要** — URL を知っていれば誰でもアクセス・回答可能
 - ⚡ **エッジネイティブ** — Cloudflare Workers でグローバル低遅延
 - 🎨 **シンプル UI** — Hono JSX によるサーバーサイドレンダリング
-- 🤖 **AI Agent 対応** — REST API 完備、CLI ツール提供予定
+- 🤖 **AI Agent 対応** — REST JSON API 完備、curl で全操作可能
 
 ## 開発ステータス
 

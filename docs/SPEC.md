@@ -74,6 +74,23 @@
 | F-16 | イベントURL (`/e/<ulid>`) を画面に表示する | P1 |
 | F-17 | URL を知っていれば誰でもイベントの閲覧・回答が可能 | P0 |
 
+### 2.5 管理画面
+
+| ID | 要件 | 優先度 |
+|----|------|--------|
+| F-20 | 環境変数 `ADMIN_PASSWORD` で管理用パスワードを設定できる | P0 |
+| F-21 | 管理画面 (`/admin`) にアクセスするとパスワード入力フォームが表示される | P0 |
+| F-22 | 正しいパスワードを入力するとセッション Cookie が発行され、管理画面が開く | P0 |
+| F-23 | 管理画面では全イベントの一覧（イベント名、作成日時、候補日数、回答数）が表示される | P0 |
+| F-24 | イベント名で検索ができる（部分一致） | P1 |
+| F-25 | 各イベント行に削除ボタンがあり、確認後にイベントを削除できる | P0 |
+| F-26 | パスワードが間違っている場合はエラーメッセージを表示する | P1 |
+| F-27 | 未設定（`ADMIN_PASSWORD` が空または未定義）の場合は管理画面全体が無効化される | P1 |
+
+> **セッション管理**: 認証成功時に `admin_session` Cookie（HttpOnly, Secure, SameSite=Lax, 有効期限 24h）を発行する。
+> Cookie の値は `ADMIN_PASSWORD` の SHA-256 ハッシュとし、リクエスト時にサーバー側で照合する。
+> Workers はステートレスだが、Hono の Cookie ミドルウェアで都度検証するため追加のストアは不要。
+
 ---
 
 ## 3. 非機能要件
@@ -89,6 +106,7 @@
 | NF-07 | レート制限 | 作成 10req/min/IP, 回答 30req/min/IP |
 | NF-08 | ID 予測困難性 | ULID（128bit, 80bit ランダム） |
 | NF-09 | HTTPS | Cloudflare デフォルト |
+| NF-10 | 管理画面認証 | 環境変数 `ADMIN_PASSWORD`（SHA-256 ハッシュ照合）、Cookie セッション（24h） |
 
 ---
 
@@ -143,8 +161,9 @@ API は **2系統** を提供する：
 
 | 系統 | Content-Type | 用途 | 認証 |
 |------|-------------|------|------|
-| **HTML** | `text/html` | ブラウザからのフォーム操作 | 不要 |
+|| **HTML** | `text/html` | ブラウザからのフォーム操作 | 不要 |
 | **REST** | `application/json` | CLI / AI Agent からの操作 | 不要 |
+| **Admin** | `text/html` | 管理画面（イベント管理） | `ADMIN_PASSWORD` |
 
 ### 5.1 全エンドポイント一覧
 
@@ -157,6 +176,9 @@ API は **2系統** を提供する：
 | `GET` | `/api/events/:id` | JSON | イベント詳細（JSON） |
 | `POST` | `/e/:id/responses` | HTML | 回答投稿（form POST → redirect） |
 | `POST` | `/api/events/:id/responses` | JSON | 回答投稿（JSON） |
+| `GET` | `/admin` | HTML | 管理画面（ログイン / イベント一覧） |
+| `POST` | `/admin/login` | HTML | 管理画面ログイン |
+| `POST` | `/admin/events/:id/delete` | HTML | イベント削除 |
 
 ---
 
@@ -229,6 +251,58 @@ status_2: △
 1. `SELECT id FROM responses WHERE event_id=? AND participant_name=?`
 2. 存在すれば `response_details` DELETE → 再 INSERT
 3. 存在しなければ新規 INSERT
+
+#### 5.2.5 GET `/admin`
+
+管理画面。セッション Cookie が有効であればイベント一覧を表示。未認証の場合はログインフォームを表示。
+
+**Query Params**:
+| Name | Required | Description |
+|------|----------|-------------|
+| `q` | 任意 | イベント名で部分一致検索 |
+
+**Authenticated Response**: `200 OK` — イベント一覧 HTML（イベント名、作成日時、候補日数、回答数、削除ボタン）
+
+**Unauthenticated Response**: `200 OK` — ログインフォーム HTML
+
+**Disabled Response**: `404 Not Found` — `ADMIN_PASSWORD` 未設定時
+
+#### 5.2.6 POST `/admin/login`
+
+管理画面にログインする。
+
+**Content-Type**: `application/x-www-form-urlencoded`
+
+**Request Body**:
+```
+password: <admin-password>
+```
+
+**Success Response**: `302 Found` → `Location: /admin`（`admin_session` Cookie 付与）
+
+**Error Response**: `200 OK` — ログインフォームをエラーメッセージとともに再表示（「パスワードが違います」）
+
+**Session Cookie**:
+| 属性 | 値 |
+|------|-----|
+| Name | `admin_session` |
+| Value | `ADMIN_PASSWORD` の SHA-256 ハッシュ |
+| HttpOnly | true |
+| Secure | true |
+| SameSite | Lax |
+| Max-Age | 86400（24時間） |
+
+#### 5.2.7 POST `/admin/events/:id/delete`
+
+イベントを削除する。セッション Cookie が必須。
+
+**URL Params**: `id` (ULID) — 削除対象イベントID
+
+**Middleware**: セッション検証 → 未認証なら `302` → `/admin`
+
+**Success Response**: `302 Found` → `Location: /admin`（イベント削除後、一覧にリダイレクト）
+
+**Error Response**: `404 Not Found` — イベントが存在しない場合
 
 ---
 
@@ -475,6 +549,23 @@ GROUP BY c.id
 ORDER BY c.sort_order
 ```
 
+#### 管理画面：イベント一覧（検索対応）
+```sql
+SELECT
+    e.id, e.name, e.memo, e.created_at,
+    (SELECT COUNT(*) FROM candidates c WHERE c.event_id = e.id) AS candidate_count,
+    (SELECT COUNT(*) FROM responses r WHERE r.event_id = e.id) AS response_count
+FROM events e
+WHERE (? IS NULL OR e.name LIKE '%' || ? || '%')
+ORDER BY e.created_at DESC
+```
+
+#### 管理画面：イベント削除
+```sql
+DELETE FROM events WHERE id = ?
+-- CASCADE により candidates, responses, response_details も自動削除
+```
+
 ---
 
 ## 7. プロジェクト構造
@@ -497,12 +588,14 @@ sorou/
 │   │   ├── schema.ts                # Drizzle ORM スキーマ
 │   │   └── index.ts                 # DB 接続
 │   ├── routes/
-│   │   ├── web.ts                   # HTML 系: GET /, POST /events
-│   │   └── api.ts                   # REST 系: /api/events/*, /api/events/:id/responses
+│   │   ├── web.ts                   # HTML 系: GET /, POST /events, GET /e/:id
+│   │   ├── api.ts                   # REST 系: /api/events/*
+│   │   └── admin.ts                 # Admin 系: /admin, /admin/login, /admin/events/:id/delete
 │   ├── views/
 │   │   ├── layout.tsx               # 共通レイアウト
 │   │   ├── top.tsx                  # トップページ JSX
 │   │   ├── event.tsx                # イベントページ JSX
+│   │   └── admin.tsx                # 管理画面 JSX（ログイン + 一覧）
 │   │   └── error.tsx                # エラーページ JSX
 │   ├── lib/
 │   │   ├── ulid.ts                  # ULID 生成
@@ -614,3 +707,8 @@ jobs:
 - [ ] XSS 対策が機能している
 - [ ] モバイル表示が崩れない
 - [ ] `wrangler deploy` でデプロイできる
+- [ ] `ADMIN_PASSWORD` 未設定時は管理画面が無効化される
+- [ ] 管理画面にログインできる（正しいパスワード）
+- [ ] 管理画面でイベント一覧が表示される
+- [ ] イベント名で検索ができる
+- [ ] イベントを削除できる

@@ -12,8 +12,8 @@
     "lint": "eslint src/",
     "format": "prettier --write src/",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "wrangler d1 execute sorou-db --local --file=./drizzle/migrations/*.sql",
-    "db:migrate:prod": "wrangler d1 execute sorou-db --remote --file=./drizzle/migrations/*.sql"
+    "db:migrate": "for f in ./drizzle/migrations/*.sql; do wrangler d1 execute sorou-db --local --file=\"$f\"; done",
+    "db:migrate:prod": "for f in ./drizzle/migrations/*.sql; do wrangler d1 execute sorou-db --remote --file=\"$f\"; done"
   },
   "dependencies": {
     "@hono/zod-validator": "^0.4.0",

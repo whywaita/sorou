@@ -64,7 +64,7 @@ Usage:
   sorou respond <id>     Submit/update a response (interactive)
 
 Environment:
-  SOROU_API_URL          API base URL (default: https://sorou.qh.nu)
+  SOROU_API_URL          API base URL (required)
 
 Commands:
   create      Create a new event. Prompts for name, memo, and dates interactively.
@@ -78,7 +78,15 @@ func apiURL() string {
 	if u := os.Getenv("SOROU_API_URL"); u != "" {
 		return strings.TrimRight(u, "/")
 	}
-	return "https://sorou.qh.nu"
+	return ""
+}
+
+func checkAPIURL() {
+	if apiURL() == "" {
+		fmt.Fprintln(os.Stderr, "Error: SOROU_API_URL environment variable is not set")
+		fmt.Fprintln(os.Stderr, "  export SOROU_API_URL=https://your-sorou-instance.example.com")
+		os.Exit(1)
+	}
 }
 
 func apiGet(path string) ([]byte, error) {
@@ -170,6 +178,7 @@ type statusEntry struct {
 // --- create ---
 
 func handleCreate() {
+	checkAPIURL()
 	reader := bufio.NewReader(os.Stdin)
 
 	fmt.Print("イベント名: ")
@@ -234,6 +243,7 @@ func handleCreate() {
 // --- show ---
 
 func handleShow(id string) {
+	checkAPIURL()
 	body, err := apiGet("/api/events/" + id)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -252,6 +262,7 @@ func handleShow(id string) {
 // --- respond ---
 
 func handleRespond(eventID string) {
+	checkAPIURL()
 	// Fetch event to get candidate IDs
 	body, err := apiGet("/api/events/" + eventID)
 	if err != nil {

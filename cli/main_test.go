@@ -113,8 +113,8 @@ func TestAPIPost_ValidationError(t *testing.T) {
 func TestAPIURL_Default(t *testing.T) {
 	os.Unsetenv("SOROU_API_URL")
 	url := apiURL()
-	if url != "https://sorou.qh.nu" {
-		t.Errorf("expected default URL, got %s", url)
+	if url != "" {
+		t.Errorf("expected empty URL when not set, got %s", url)
 	}
 }
 

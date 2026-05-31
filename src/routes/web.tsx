@@ -73,7 +73,7 @@ web.get("/e/:id", async (c) => {
   const db = createDB(c.env.DB);
 
   const event = await loadEvent(db, id);
-  if (!event) return c.html(<NotFoundPage />);
+  if (!event) return c.html(<NotFoundPage />, 404);
 
   const editParam = c.req.query("edit");
   const editData = editParam ? getEditData(event, editParam) : undefined;
@@ -94,7 +94,7 @@ web.post("/e/:id/responses", async (c) => {
   const db = createDB(c.env.DB);
 
   const event = await loadEvent(db, eventId);
-  if (!event) return c.html(<NotFoundPage />);
+  if (!event) return c.html(<NotFoundPage />, 404);
 
   const participantName = (body.participant_name as string)?.trim() ?? "";
   const comment = (body.comment as string)?.trim() ?? "";

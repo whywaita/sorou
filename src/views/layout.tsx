@@ -89,8 +89,16 @@ export const Layout = (props: LayoutProps) => {
           </div>
         </header>
         <main class="max-w-3xl mx-auto px-4 py-8">${props.children}</main>
-        <footer class="text-center text-slate-400 text-sm py-6">
-          sorou — シンプルな日程調整ツール
+        <footer class="text-center text-slate-400 text-sm py-6 space-y-1">
+          <p>sorou — シンプルな日程調整ツール</p>
+          <p class="space-x-4">
+            <a href="/privacy" class="hover:text-slate-600 underline">
+              プライバシーポリシー
+            </a>
+            <a href="/terms" class="hover:text-slate-600 underline">
+              利用規約
+            </a>
+          </p>
         </footer>
       </body>
     </html>`;

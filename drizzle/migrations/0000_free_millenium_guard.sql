@@ -1,4 +1,4 @@
-CREATE TABLE `candidates` (
+CREATE TABLE IF NOT EXISTS `candidates` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`event_id` text NOT NULL,
 	`date` text NOT NULL,
@@ -6,14 +6,14 @@ CREATE TABLE `candidates` (
 	FOREIGN KEY (`event_id`) REFERENCES `events`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
-CREATE TABLE `events` (
+CREATE TABLE IF NOT EXISTS `events` (
 	`id` text PRIMARY KEY NOT NULL,
 	`name` text NOT NULL,
 	`memo` text DEFAULT '' NOT NULL,
 	`created_at` text DEFAULT (datetime('now')) NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE `response_details` (
+CREATE TABLE IF NOT EXISTS `response_details` (
 	`response_id` integer NOT NULL,
 	`candidate_id` integer NOT NULL,
 	`status` text NOT NULL,
@@ -21,7 +21,7 @@ CREATE TABLE `response_details` (
 	FOREIGN KEY (`candidate_id`) REFERENCES `candidates`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
-CREATE TABLE `responses` (
+CREATE TABLE IF NOT EXISTS `responses` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`event_id` text NOT NULL,
 	`participant_name` text NOT NULL,

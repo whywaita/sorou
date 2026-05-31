@@ -20,7 +20,11 @@ All API endpoints are public (no authentication required).
 
 Install:
 ```bash
-cd cli && make build
+# go install (recommended)
+go install github.com/whywaita/sorou/cli@latest
+
+# or build from source
+cd cli && go build -o sorou .
 ```
 
 ## Start here

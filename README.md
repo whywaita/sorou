@@ -1,6 +1,6 @@
 # sorou（揃う）
 
-シンプルな日程調整ツール。認証不要、Cloudflare Workers + D1 で動作。
+既存の日程調整サービスと同様の機能を提供する、シンプルな日程調整ツール。認証不要、Cloudflare Workers + D1 で動作。
 
 ## 特徴
 

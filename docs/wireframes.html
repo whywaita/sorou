@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>sorou — Wireframes</title>
+<style>
+  /* ── ワイヤーフレーム用 低忠実度スタイル ───────────────────── */
+  :root {
+    --ink: #2b2b2b;
+    --muted: #8a8a8a;
+    --line: #b5b5b5;
+    --fill: #f4f4f2;
+    --bg: #e9e9e6;
+    --accent: #d8d8d4;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Comic Sans MS", "Hiragino Maru Gothic ProN", "Yu Gothic", sans-serif;
+    line-height: 1.5;
+    padding: 32px 16px 64px;
+  }
+  .page-title {
+    text-align: center;
+    margin: 0 auto 8px;
+    font-size: 28px;
+  }
+  .page-sub {
+    text-align: center;
+    color: var(--muted);
+    margin: 0 auto 40px;
+    font-size: 14px;
+  }
+
+  /* 画面カードの並び */
+  .grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 32px;
+    justify-content: center;
+    align-items: flex-start;
+    max-width: 1280px;
+    margin: 0 auto;
+  }
+
+  .screen {
+    background: #fff;
+    border: 2px solid var(--ink);
+    border-radius: 6px;
+    width: 380px;
+    box-shadow: 6px 6px 0 rgba(0,0,0,0.12);
+  }
+  .screen-label {
+    background: var(--ink);
+    color: #fff;
+    font-size: 12px;
+    padding: 6px 12px;
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .screen-label .route { font-family: monospace; opacity: .85; }
+  .browser-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    border-bottom: 1px dashed var(--line);
+    background: var(--fill);
+  }
+  .dot { width: 10px; height: 10px; border-radius: 50%; border: 1px solid var(--line); }
+  .url {
+    flex: 1;
+    font-family: monospace;
+    font-size: 11px;
+    color: var(--muted);
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 2px 10px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .viewport { padding: 18px 16px; }
+
+  /* 共通ヘッダー / フッター */
+  .app-header {
+    text-align: center;
+    border-bottom: 1px dashed var(--line);
+    padding-bottom: 12px;
+    margin-bottom: 16px;
+  }
+  .app-header h1 { font-size: 18px; margin: 0; }
+  .app-header p { font-size: 11px; color: var(--muted); margin: 4px 0 0; }
+  .app-footer {
+    text-align: center;
+    border-top: 1px dashed var(--line);
+    margin-top: 18px;
+    padding-top: 10px;
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  /* フォーム部品（プレースホルダー） */
+  .field { margin-bottom: 14px; }
+  .label { font-size: 12px; margin-bottom: 4px; display: block; }
+  .req { color: #b04; }
+  .input, .textarea {
+    width: 100%;
+    border: 1.5px solid var(--line);
+    border-radius: 4px;
+    background: repeating-linear-gradient(0deg, #fff, #fff 22px, #f0f0ee 22px, #f0f0ee 23px);
+    padding: 8px 10px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .input { height: 34px; line-height: 18px; }
+  .textarea { min-height: 78px; white-space: pre-line; }
+  .hint { font-size: 10px; color: var(--muted); margin-top: 3px; }
+
+  .btn {
+    display: inline-block;
+    width: 100%;
+    text-align: center;
+    border: 2px solid var(--ink);
+    border-radius: 4px;
+    background: var(--accent);
+    padding: 9px;
+    font-size: 13px;
+    font-weight: bold;
+  }
+
+  /* エラー表示 */
+  .error-box {
+    border: 1.5px solid #b04;
+    background: #fbeaea;
+    color: #b04;
+    border-radius: 4px;
+    padding: 8px 10px;
+    font-size: 11px;
+    margin-bottom: 14px;
+  }
+  .input.is-error, .textarea.is-error { border-color: #b04; }
+  .field-error { color: #b04; font-size: 10px; margin-top: 3px; }
+
+  /* 出欠表 */
+  .section-divider {
+    border: 0;
+    border-top: 2px dashed var(--line);
+    margin: 18px 0;
+  }
+  .section-title { font-size: 13px; font-weight: bold; margin: 0 0 10px; }
+  table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  th, td {
+    border: 1px solid var(--line);
+    padding: 5px 4px;
+    text-align: center;
+  }
+  th { background: var(--fill); }
+  td.date-cell { text-align: left; white-space: nowrap; }
+  .mark { font-size: 13px; font-weight: bold; }
+  tr.summary td { background: var(--fill); font-weight: bold; color: var(--muted); }
+  /* 最有力候補（〇最多）のハイライト — F-18 */
+  tr.best td { background: #ecfdf5; }
+  tr.best td.date-cell { border-left: 3px solid #059669; font-weight: bold; color: #047857; }
+  .legend { font-size: 10px; color: var(--muted); margin: 6px 0 0; }
+  .legend .swatch { display: inline-block; width: 10px; height: 10px; background: #ecfdf5; border-left: 3px solid #059669; vertical-align: middle; margin-right: 4px; }
+  /* クリック可能な参加者名 — F-19 */
+  th .name-link { color: #047857; text-decoration: underline; cursor: pointer; }
+  /* 回答フォームの編集モード表示 — F-19 */
+  .edit-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    border: 1.5px solid #059669;
+    background: #ecfdf5;
+    color: #047857;
+    border-radius: 4px;
+    padding: 6px 10px;
+    font-size: 11px;
+    margin-bottom: 12px;
+  }
+  .edit-banner .reset { color: var(--muted); text-decoration: underline; cursor: pointer; font-size: 10px; }
+
+  /* ラジオ群 */
+  .status-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    border-bottom: 1px dashed var(--line);
+    padding: 7px 0;
+    font-size: 11px;
+  }
+  .status-row .date { flex: 1; }
+  .radios { display: flex; gap: 8px; }
+  .radio {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 2px 8px;
+    font-size: 10px;
+  }
+  .radio .circle { width: 9px; height: 9px; border-radius: 50%; border: 1px solid var(--ink); }
+  .radio.checked { background: var(--accent); }
+  .radio.checked .circle { background: var(--ink); }
+
+  /* 共有URL */
+  .share {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    border: 1.5px dashed var(--line);
+    border-radius: 4px;
+    padding: 8px 10px;
+    background: var(--fill);
+    font-size: 11px;
+  }
+  .share .url-text { flex: 1; font-family: monospace; color: var(--muted); overflow: hidden; text-overflow: ellipsis; }
+  .copy-btn { border: 1.5px solid var(--ink); border-radius: 4px; padding: 3px 10px; font-size: 10px; background: #fff; }
+
+  /* 404 */
+  .notfound { text-align: center; padding: 40px 12px; }
+  .notfound .code { font-size: 64px; font-weight: bold; color: var(--line); margin: 0; }
+  .notfound .msg { font-size: 14px; margin: 8px 0 20px; }
+
+  /* 管理画面 */
+  .admin-header { display: flex; align-items: center; gap: 6px; border-bottom: 1px dashed var(--line); padding-bottom: 12px; margin-bottom: 16px; }
+  .admin-header h1 { font-size: 18px; margin: 0; }
+  .search-bar { display: flex; gap: 6px; align-items: center; margin-bottom: 14px; }
+  .search-bar .input { flex: 1; margin: 0; }
+  .search-bar .copy-btn { padding: 7px 12px; }
+  .admin-table td.event-name { text-align: left; }
+  .admin-table .created { white-space: nowrap; color: var(--muted); font-size: 10px; }
+  .del-btn { border: 1.5px solid #b04; color: #b04; background: #fff; border-radius: 4px; padding: 2px 8px; font-size: 11px; font-weight: bold; cursor: pointer; }
+  .admin-count { font-size: 10px; color: var(--muted); margin: 8px 0 0; text-align: right; }
+  .confirm-overlay { border: 1.5px solid #b04; background: #fbeaea; color: #b04; border-radius: 4px; padding: 8px 10px; font-size: 11px; margin-bottom: 12px; }
+  .confirm-overlay .actions { display: flex; gap: 8px; margin-top: 6px; }
+  .confirm-overlay .actions span { border: 1.5px solid #b04; border-radius: 4px; padding: 2px 10px; background: #fff; cursor: pointer; }
+
+  .note {
+    max-width: 1280px;
+    margin: 0 auto 24px;
+    font-size: 12px;
+    color: var(--muted);
+    background: #fff;
+    border: 1px dashed var(--line);
+    border-radius: 4px;
+    padding: 10px 14px;
+  }
+  .note b { color: var(--ink); }
+  code { font-family: monospace; background: var(--fill); padding: 1px 4px; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+  <h1 class="page-title">sorou — Wireframes</h1>
+  <p class="page-sub">SPEC.md / DESIGN.md に基づく全画面 低忠実度ワイヤーフレーム（v0.1.0）</p>
+
+  <div class="note">
+    対象画面: <b>① トップ（作成フォーム）</b> / <b>② トップ（バリデーションエラー）</b> /
+    <b>③ イベント詳細（出欠表 + 回答フォーム + 共有URL）</b> / <b>④ 404</b> /
+    <b>⑤ 管理画面ログイン</b> / <b>⑥ 管理画面ログイン（エラー）</b> /
+    <b>⑦ 管理画面イベント一覧（検索 + 削除）</b>。
+    REST API（<code>/api/*</code>）は JSON のため UI なし。
+  </div>
+
+  <div class="grid">
+
+    <!-- ① トップページ：通常 ─────────────────────────────── -->
+    <section class="screen">
+      <div class="screen-label"><span>① トップページ（通常）</span><span class="route">GET /</span></div>
+      <div class="browser-bar">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="url">https://sorou.example.com/</span>
+      </div>
+      <div class="viewport">
+        <div class="app-header">
+          <h1>📅 sorou（揃う）</h1>
+          <p>シンプルな日程調整ツール</p>
+        </div>
+
+        <div class="field">
+          <label class="label">イベント名 <span class="req">*</span></label>
+          <div class="input"></div>
+          <div class="hint">最大100文字</div>
+        </div>
+
+        <div class="field">
+          <label class="label">メモ（任意）</label>
+          <div class="input"></div>
+          <div class="hint">最大500文字</div>
+        </div>
+
+        <div class="field">
+          <label class="label">候補日時 <span class="req">*</span>（1行1候補）</label>
+          <div class="textarea">6/15(月) 19:00-
+6/16(火) 19:00-
+6/17(水) 19:00-</div>
+          <div class="hint">最大30候補・空行は除去</div>
+        </div>
+
+        <div class="btn">イベントを作成</div>
+
+        <div class="app-footer">sorou — powered by whywrite.it</div>
+      </div>
+    </section>
+
+    <!-- ② トップページ：バリデーションエラー ──────────────── -->
+    <section class="screen">
+      <div class="screen-label"><span>② トップ（エラー / F-05）</span><span class="route">POST /events → 200</span></div>
+      <div class="browser-bar">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="url">https://sorou.example.com/events</span>
+      </div>
+      <div class="viewport">
+        <div class="app-header">
+          <h1>📅 sorou（揃う）</h1>
+          <p>シンプルな日程調整ツール</p>
+        </div>
+
+        <div class="error-box">⚠ 入力内容を確認してください</div>
+
+        <div class="field">
+          <label class="label">イベント名 <span class="req">*</span></label>
+          <div class="input is-error"></div>
+          <div class="field-error">必須項目です</div>
+        </div>
+
+        <div class="field">
+          <label class="label">メモ（任意）</label>
+          <div class="input">お店は決まり次第連絡します</div>
+          <div class="hint">入力値は保持される</div>
+        </div>
+
+        <div class="field">
+          <label class="label">候補日時 <span class="req">*</span>（1行1候補）</label>
+          <div class="textarea is-error"></div>
+          <div class="field-error">候補日が入力されていません</div>
+        </div>
+
+        <div class="btn">イベントを作成</div>
+
+        <div class="app-footer">sorou — powered by whywrite.it</div>
+      </div>
+    </section>
+
+    <!-- ③ イベントページ ──────────────────────────────────── -->
+    <section class="screen" style="width: 440px;">
+      <div class="screen-label"><span>③ イベント詳細</span><span class="route">GET /e/:id</span></div>
+      <div class="browser-bar">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="url">https://sorou.example.com/e/01ARZ3NDEK…</span>
+      </div>
+      <div class="viewport">
+        <div class="app-header" style="text-align:left;">
+          <h1>📅 飲み会の日程調整</h1>
+          <p>メモ: お店は決まり次第連絡します</p>
+        </div>
+
+        <!-- 出欠表（行=候補日 / 列=参加者 + 集計） -->
+        <table>
+          <thead>
+            <tr>
+              <th style="text-align:left;">候補日</th>
+              <th><span class="name-link">whytaro</span></th>
+              <th><span class="name-link">hanako</span></th>
+              <th>計</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td class="date-cell">6/15(月) 19:00</td><td class="mark">〇</td><td class="mark">×</td><td>1/2</td></tr>
+            <tr class="best"><td class="date-cell">6/16(火) 19:00</td><td class="mark">〇</td><td class="mark">〇</td><td>2/2</td></tr>
+            <tr><td class="date-cell">6/17(水) 19:00</td><td class="mark">△</td><td class="mark">〇</td><td>1/2</td></tr>
+            <tr class="summary"><td class="date-cell">集計（〇/△/×）</td><td>2/1/0</td><td>2/0/1</td><td></td></tr>
+          </tbody>
+        </table>
+        <p class="legend"><span class="swatch"></span>〇（参加）が最多の候補日をハイライト（F-18）</p>
+        <p class="legend">▸ <span class="name-link">参加者名</span> をクリックすると、下のフォームにその人の現在の回答が反映され編集できる（F-19）</p>
+
+        <hr class="section-divider">
+
+        <!-- 回答フォーム（編集モード: whytaro をクリックした状態 / F-19） -->
+        <p class="section-title">📝 whytaro さんの回答を編集</p>
+        <div class="edit-banner">
+          <span>✎ 既存回答をプリフィル中（?edit=whytaro）</span>
+          <span class="reset">新規回答に戻す</span>
+        </div>
+
+        <div class="field">
+          <label class="label">お名前 <span class="req">*</span></label>
+          <div class="input">whytaro</div>
+          <div class="hint">最大50文字・同名で再回答すると上書き</div>
+        </div>
+        <div class="field">
+          <label class="label">コメント（任意）</label>
+          <div class="input">遅れるかも</div>
+          <div class="hint">最大200文字</div>
+        </div>
+
+        <div class="status-row">
+          <span class="date">6/15(月) 19:00</span>
+          <span class="radios">
+            <span class="radio checked"><span class="circle"></span>〇</span>
+            <span class="radio"><span class="circle"></span>△</span>
+            <span class="radio"><span class="circle"></span>×</span>
+          </span>
+        </div>
+        <div class="status-row">
+          <span class="date">6/16(火) 19:00</span>
+          <span class="radios">
+            <span class="radio checked"><span class="circle"></span>〇</span>
+            <span class="radio"><span class="circle"></span>△</span>
+            <span class="radio"><span class="circle"></span>×</span>
+          </span>
+        </div>
+        <div class="status-row">
+          <span class="date">6/17(水) 19:00</span>
+          <span class="radios">
+            <span class="radio"><span class="circle"></span>〇</span>
+            <span class="radio checked"><span class="circle"></span>△</span>
+            <span class="radio"><span class="circle"></span>×</span>
+          </span>
+        </div>
+        <div class="hint" style="margin:6px 0 14px;">新規回答時のデフォルトは × （不参加）</div>
+
+        <div class="btn">回答を更新する</div>
+
+        <hr class="section-divider">
+
+        <!-- 共有URL -->
+        <p class="section-title">🔗 共有URL</p>
+        <div class="share">
+          <span class="url-text">https://sorou.example.com/e/01ARZ3NDEK…</span>
+          <span class="copy-btn">コピー</span>
+        </div>
+
+        <div class="app-footer">sorou — powered by whywrite.it</div>
+      </div>
+    </section>
+
+    <!-- ④ 404 ─────────────────────────────────────────────── -->
+    <section class="screen">
+      <div class="screen-label"><span>④ 404 Not Found（F-09）</span><span class="route">GET /e/:id → 404</span></div>
+      <div class="browser-bar">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="url">https://sorou.example.com/e/unknown</span>
+      </div>
+      <div class="viewport">
+        <div class="app-header">
+          <h1>📅 sorou（揃う）</h1>
+        </div>
+        <div class="notfound">
+          <p class="code">404</p>
+          <p class="msg">イベントが見つかりません</p>
+          <div class="btn" style="width:auto; display:inline-block; padding:9px 24px;">トップへ戻る</div>
+        </div>
+        <div class="app-footer">sorou — powered by whywrite.it</div>
+      </div>
+    </section>
+
+    <!-- ⑤ 管理画面：ログインフォーム ───────────────────────── -->
+    <section class="screen">
+      <div class="screen-label"><span>⑤ 管理画面ログイン（F-21）</span><span class="route">GET /admin（未認証）</span></div>
+      <div class="browser-bar">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="url">https://sorou.example.com/admin</span>
+      </div>
+      <div class="viewport">
+        <div class="admin-header">
+          <h1>🔒 管理画面</h1>
+        </div>
+
+        <p class="hint" style="margin-bottom:14px;">セッション Cookie が無い、または失効している場合に表示。</p>
+
+        <form>
+          <div class="field">
+            <label class="label">パスワード <span class="req">*</span></label>
+            <div class="input">••••••••</div>
+            <div class="hint">環境変数 <code>ADMIN_PASSWORD</code> と照合（SHA-256）</div>
+          </div>
+          <div class="btn">ログイン</div>
+        </form>
+
+        <div class="app-footer">sorou — powered by whywrite.it</div>
+      </div>
+    </section>
+
+    <!-- ⑥ 管理画面：ログインエラー ─────────────────────────── -->
+    <section class="screen">
+      <div class="screen-label"><span>⑥ ログインエラー（F-26）</span><span class="route">POST /admin/login → 200</span></div>
+      <div class="browser-bar">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="url">https://sorou.example.com/admin/login</span>
+      </div>
+      <div class="viewport">
+        <div class="admin-header">
+          <h1>🔒 管理画面</h1>
+        </div>
+
+        <div class="error-box">⚠ パスワードが違います</div>
+
+        <form>
+          <div class="field">
+            <label class="label">パスワード <span class="req">*</span></label>
+            <div class="input is-error">••••••••</div>
+            <div class="field-error">もう一度入力してください</div>
+          </div>
+          <div class="btn">ログイン</div>
+        </form>
+
+        <div class="app-footer">sorou — powered by whywrite.it</div>
+      </div>
+    </section>
+
+    <!-- ⑦ 管理画面：イベント一覧（検索 + 削除） ──────────────── -->
+    <section class="screen" style="width: 440px;">
+      <div class="screen-label"><span>⑦ イベント一覧（F-23〜25）</span><span class="route">GET /admin（認証済）</span></div>
+      <div class="browser-bar">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="url">https://sorou.example.com/admin</span>
+      </div>
+      <div class="viewport">
+        <div class="admin-header">
+          <h1>🔒 管理画面</h1>
+        </div>
+
+        <!-- 検索（F-24：イベント名 インクリメンタルフィルター / クライアントサイド） -->
+        <div class="search-bar">
+          <div class="input">🔍 飲み</div>
+        </div>
+        <p class="hint" style="margin:-8px 0 12px;">入力に応じてその場で行を絞り込み（ページ遷移・サーバー往復なし）</p>
+
+        <!-- 削除確認（F-25：確認後に削除） -->
+        <div class="confirm-overlay">
+          ⚠「飲み会の日程調整」を削除しますか？候補日・回答も全て削除されます。
+          <div class="actions">
+            <span>削除する</span>
+            <span>キャンセル</span>
+          </div>
+        </div>
+
+        <!-- イベント一覧 -->
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th style="text-align:left;">イベント名</th>
+              <th>作成日時</th>
+              <th>候補</th>
+              <th>回答</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="event-name">飲み会の日程調整</td>
+              <td class="created">06/01 12:00</td>
+              <td>3</td>
+              <td>2</td>
+              <td><span class="del-btn">削除</span></td>
+            </tr>
+            <tr>
+              <td class="event-name">歓迎会</td>
+              <td class="created">06/01 13:00</td>
+              <td>5</td>
+              <td>1</td>
+              <td><span class="del-btn">削除</span></td>
+            </tr>
+            <tr>
+              <td class="event-name">勉強会</td>
+              <td class="created">05/30 09:00</td>
+              <td>2</td>
+              <td>0</td>
+              <td><span class="del-btn">削除</span></td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="admin-count">12 件中 1 件を表示（「飲み」で絞り込み中）</p>
+
+        <div class="app-footer">sorou — powered by whywrite.it</div>
+      </div>
+    </section>
+
+  </div>
+
+</body>
+</html>

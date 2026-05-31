@@ -3,3 +3,5 @@ dist
 .wrangler
 *.log
 .env
+
+cli/cli

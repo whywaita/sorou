@@ -6,6 +6,7 @@ import { ulid } from "../lib/ulid";
 import { TopPage } from "../views/top";
 import { EventPage } from "../views/event";
 import { NotFoundPage } from "../views/error";
+import { renderOgpImage } from "../lib/ogp";
 import { eq } from "drizzle-orm";
 import type { Event } from "../types";
 
@@ -19,9 +20,15 @@ function getDomain(c: {
   return `${proto}://${host}`;
 }
 
+function currentUrl(c: {
+  req: { header: (name: string) => string | undefined; path: string };
+}): string {
+  return `${getDomain(c)}${c.req.path}`;
+}
+
 // GET /
 web.get("/", (c) => {
-  return c.html(<TopPage />);
+  return c.html(<TopPage currentUrl={currentUrl(c)} />);
 });
 
 // POST /events
@@ -37,6 +44,7 @@ web.post("/events", async (c) => {
     }
     return c.html(
       <TopPage
+        currentUrl={currentUrl(c)}
         errors={fieldErrors}
         values={{
           name: body.name as string,
@@ -73,7 +81,7 @@ web.get("/e/:id", async (c) => {
   const db = createDB(c.env.DB);
 
   const event = await loadEvent(db, id);
-  if (!event) return c.html(<NotFoundPage />, 404);
+  if (!event) return c.html(<NotFoundPage currentUrl={currentUrl(c)} />, 404);
 
   const editParam = c.req.query("edit");
   const editData = editParam ? getEditData(event, editParam) : undefined;
@@ -82,9 +90,26 @@ web.get("/e/:id", async (c) => {
     <EventPage
       event={event}
       shareUrl={`${getDomain(c)}/e/${id}`}
+      currentUrl={currentUrl(c)}
       edit={editData}
     />,
   );
+});
+
+// GET /ogp.png — default OGP image (site name + tagline)
+web.get("/ogp.png", async () => {
+  return renderOgpImage();
+});
+
+// GET /e/:id/ogp.png — dynamic OGP image per event
+web.get("/e/:id/ogp.png", async (c) => {
+  const id = c.req.param("id");
+  const db = createDB(c.env.DB);
+
+  const event = await loadEvent(db, id);
+  if (!event) return c.notFound();
+
+  return renderOgpImage({ title: event.name, description: event.memo });
 });
 
 // POST /e/:id/responses
@@ -94,7 +119,7 @@ web.post("/e/:id/responses", async (c) => {
   const db = createDB(c.env.DB);
 
   const event = await loadEvent(db, eventId);
-  if (!event) return c.html(<NotFoundPage />, 404);
+  if (!event) return c.html(<NotFoundPage currentUrl={currentUrl(c)} />, 404);
 
   const participantName = (body.participant_name as string)?.trim() ?? "";
   const comment = (body.comment as string)?.trim() ?? "";
@@ -125,6 +150,7 @@ web.post("/e/:id/responses", async (c) => {
       <EventPage
         event={event}
         shareUrl={`${getDomain(c)}/e/${eventId}`}
+        currentUrl={currentUrl(c)}
         errors={errors}
         edit={{
           name: participantName,

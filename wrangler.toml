@@ -1,6 +1,8 @@
 name = "sorou"
 main = "src/index.ts"
 compatibility_date = "2025-01-01"
+# workers-og (satori + resvg) が Node.js 互換 API を必要とするため有効化
+compatibility_flags = ["nodejs_compat"]
 
 [observability]
 enabled = true
@@ -9,6 +11,9 @@ head_sampling_rate = 1
 # ADMIN_PASSWORD は機密情報のため [vars] には置かず、Secret で管理する。
 #   wrangler secret put ADMIN_PASSWORD
 # 未設定時は管理画面が無効化される (F-27)。
+
+[assets]
+directory = "./public"
 
 [[d1_databases]]
 binding = "DB"

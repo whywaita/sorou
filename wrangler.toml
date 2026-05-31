@@ -2,10 +2,14 @@ name = "sorou"
 main = "src/index.ts"
 compatibility_date = "2025-01-01"
 
+[observability]
+enabled = true
+head_sampling_rate = 1
+
 [vars]
 ADMIN_PASSWORD = ""
 
 [[d1_databases]]
 binding = "DB"
 database_name = "sorou-db"
-database_id = "sorou-db-dev"
+database_id = "a9eabce5-dc4a-40b3-8c05-eb2cb1f553a6"

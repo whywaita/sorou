@@ -1,6 +1,8 @@
 name = "sorou"
 main = "src/index.ts"
 compatibility_date = "2025-01-01"
+# workers-og (satori + resvg) が Node.js 互換 API を必要とするため有効化
+compatibility_flags = ["nodejs_compat"]
 
 [observability]
 enabled = true

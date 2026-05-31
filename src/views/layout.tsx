@@ -30,7 +30,7 @@ export const Layout = (props: LayoutProps) => {
     ? props.ogImage.startsWith("/")
       ? `${origin(props.currentUrl)}${props.ogImage}`
       : props.ogImage
-    : `${origin(props.currentUrl)}/ogp.svg`;
+    : `${origin(props.currentUrl)}/ogp.png`;
 
   return html`<!DOCTYPE html>
     <html lang="ja">

@@ -59,6 +59,13 @@ describe("GET /e/:id（存在しないイベント）", () => {
   });
 });
 
+describe("GET /e/:id/ogp.png（存在しないイベント）", () => {
+  it("HTTP 404 を返す", async () => {
+    const res = await app.request("/e/nonexistent/ogp.png", {}, env);
+    expect(res.status).toBe(404);
+  });
+});
+
 describe("POST /e/:id/responses（存在しないイベント）", () => {
   it("HTTP 404 を返す", async () => {
     const res = await app.request(

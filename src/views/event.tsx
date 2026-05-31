@@ -17,7 +17,7 @@ export function EventPage(props: {
       title={ev.name}
       description={ev.memo || `${ev.name} の日程調整 — 出欠を回答してください`}
       ogType="article"
-      ogImage={`${getOrigin(shareUrl)}/e/${ev.id}/ogp.svg`}
+      ogImage={`${getOrigin(shareUrl)}/e/${ev.id}/ogp.png`}
       currentUrl={props.currentUrl}
     >
       <h1 class="text-2xl font-bold mb-1">{escapeHtml(ev.name)}</h1>

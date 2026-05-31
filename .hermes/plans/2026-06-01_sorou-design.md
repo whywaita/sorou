@@ -1,4 +1,4 @@
-# Plan: sorou（揃う）— 既存サービス 互換の日程調整サービス
+# Plan: sorou（揃う）— 日程調整サービス
 
 ## Status
 - [x] 要件定義（docs/DESIGN.md, docs/SPEC.md）

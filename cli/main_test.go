@@ -22,7 +22,7 @@ func TestAPIGet_Success(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	t.Setenv("SOROU_API_URL", ts.URL)
+	t.Setenv("SOROU_API_BASE", ts.URL)
 	body, err := apiGet("/api/events/test-id")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -44,7 +44,7 @@ func TestAPIGet_NotFound(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	t.Setenv("SOROU_API_URL", ts.URL)
+	t.Setenv("SOROU_API_BASE", ts.URL)
 	_, err := apiGet("/api/events/nonexistent")
 	if err == nil {
 		t.Fatal("expected error for 404")
@@ -77,7 +77,7 @@ func TestAPIPost_Success(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	t.Setenv("SOROU_API_URL", ts.URL)
+	t.Setenv("SOROU_API_BASE", ts.URL)
 	payload := map[string]any{"name": "テスト", "dates": []string{"6/1"}}
 	body, err := apiPost("/api/events", payload)
 	if err != nil {
@@ -100,7 +100,7 @@ func TestAPIPost_ValidationError(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	t.Setenv("SOROU_API_URL", ts.URL)
+	t.Setenv("SOROU_API_BASE", ts.URL)
 	_, err := apiPost("/api/events", map[string]any{"name": ""})
 	if err == nil {
 		t.Fatal("expected error for 400")
@@ -111,6 +111,7 @@ func TestAPIPost_ValidationError(t *testing.T) {
 }
 
 func TestAPIURL_Default(t *testing.T) {
+	os.Unsetenv("SOROU_API_BASE")
 	os.Unsetenv("SOROU_API_URL")
 	url := apiURL()
 	if url != "" {
@@ -118,7 +119,8 @@ func TestAPIURL_Default(t *testing.T) {
 	}
 }
 
-func TestAPIURL_Custom(t *testing.T) {
+func TestAPIURL_CustomURL(t *testing.T) {
+	t.Setenv("SOROU_API_BASE", "")
 	t.Setenv("SOROU_API_URL", "http://localhost:8787")
 	url := apiURL()
 	if url != "http://localhost:8787" {
@@ -126,15 +128,33 @@ func TestAPIURL_Custom(t *testing.T) {
 	}
 }
 
+func TestAPIURL_CustomBase(t *testing.T) {
+	t.Setenv("SOROU_API_BASE", "http://localhost:8787")
+	url := apiURL()
+	if url != "http://localhost:8787" {
+		t.Errorf("expected custom BASE URL, got %s", url)
+	}
+}
+
+func TestAPIURL_BasePrecedence(t *testing.T) {
+	// SOROU_API_BASE should take precedence over SOROU_API_URL
+	t.Setenv("SOROU_API_BASE", "https://base.example.com")
+	t.Setenv("SOROU_API_URL", "https://url.example.com")
+	url := apiURL()
+	if url != "https://base.example.com" {
+		t.Errorf("expected SOROU_API_BASE to take precedence, got %s", url)
+	}
+}
+
 func TestAPIURL_TrailingSlash(t *testing.T) {
-	t.Setenv("SOROU_API_URL", "https://example.com/")
+	t.Setenv("SOROU_API_BASE", "https://example.com/")
 	url := apiURL()
 	if url != "https://example.com" {
 		t.Errorf("expected URL without trailing slash, got %s", url)
 	}
 }
 
-// Test that SOROU_API_URL with trailing slash is trimmed before building paths.
+// Test that SOROU_API_BASE with trailing slash is trimmed before building paths.
 func TestAPIPost_TrailingSlash(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Should not have double slash
@@ -146,9 +166,19 @@ func TestAPIPost_TrailingSlash(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	t.Setenv("SOROU_API_URL", ts.URL+"/")
+	t.Setenv("SOROU_API_BASE", ts.URL+"/")
 	_, err := apiPost("/api/events", map[string]any{"name": "test", "dates": []string{"6/1"}})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestAPIURL_BaseWithURLFallback(t *testing.T) {
+	// When SOROU_API_BASE is not set, SOROU_API_URL should be used
+	os.Unsetenv("SOROU_API_BASE")
+	t.Setenv("SOROU_API_URL", "https://fallback.example.com")
+	url := apiURL()
+	if url != "https://fallback.example.com" {
+		t.Errorf("expected SOROU_API_URL fallback, got %s", url)
 	}
 }

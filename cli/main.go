@@ -4,11 +4,12 @@
 //
 //	sorou create           Create a new event (interactive)
 //	sorou show <id>        Show event details (JSON)
+//	sorou get <id>         Alias for show
 //	sorou respond <id>     Submit/update a response (interactive)
 //
 // Environment:
 //
-//	SOROU_API_URL          API base URL (default: https://sorou.qh.nu)
+//	SOROU_API_BASE         API base URL (required)
 package main
 
 import (
@@ -32,7 +33,7 @@ func main() {
 	switch cmd {
 	case "create":
 		handleCreate()
-	case "show":
+	case "show", "get":
 		if len(os.Args) < 3 {
 			fmt.Fprintln(os.Stderr, "Error: event ID required")
 			fmt.Fprintln(os.Stderr, "Usage: sorou show <id>")
@@ -61,20 +62,27 @@ func printUsage() {
 Usage:
   sorou create           Create a new event (interactive)
   sorou show <id>        Show event details (JSON)
+  sorou get <id>         Alias for show
   sorou respond <id>     Submit/update a response (interactive)
 
 Environment:
-  SOROU_API_URL          API base URL (required)
+  SOROU_API_BASE         API base URL (required)
 
 Commands:
   create      Create a new event. Prompts for name, memo, and dates interactively.
   show        Display an event's details including candidates and responses as JSON.
+  get         Alias for show.
   respond     Submit or update your attendance response. Prompts interactively.`)
 }
 
 // --- API client ---
 
 func apiURL() string {
+	// SOROU_API_BASE is the documented variable (see docs/DESIGN.md),
+	// SOROU_API_URL is accepted for backward compatibility.
+	if u := os.Getenv("SOROU_API_BASE"); u != "" {
+		return strings.TrimRight(u, "/")
+	}
 	if u := os.Getenv("SOROU_API_URL"); u != "" {
 		return strings.TrimRight(u, "/")
 	}
@@ -83,8 +91,8 @@ func apiURL() string {
 
 func checkAPIURL() {
 	if apiURL() == "" {
-		fmt.Fprintln(os.Stderr, "Error: SOROU_API_URL environment variable is not set")
-		fmt.Fprintln(os.Stderr, "  export SOROU_API_URL=https://your-sorou-instance.example.com")
+		fmt.Fprintln(os.Stderr, "Error: SOROU_API_BASE environment variable is not set")
+		fmt.Fprintln(os.Stderr, "  export SOROU_API_BASE=https://your-sorou-instance.example.com")
 		os.Exit(1)
 	}
 }
@@ -198,14 +206,14 @@ func handleCreate() {
 	for {
 		fmt.Print("> ")
 		line, err := reader.ReadString('\n')
-		if err != nil {
-			break
-		}
 		line = strings.TrimSpace(line)
 		if line == "" {
-			break
+			break // intentional blank line or EOF with no content
 		}
 		dates = append(dates, line)
+		if err != nil {
+			break // EOF after processing the last line
+		}
 	}
 
 	if len(dates) == 0 {
@@ -304,7 +312,11 @@ func handleRespond(eventID string) {
 	for _, d := range event.Dates {
 		for {
 			fmt.Printf("  [%s] 〇/△/×: ", d.Date)
-			choice, _ := reader.ReadString('\n')
+			choice, err := reader.ReadString('\n')
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "\nError: 入力が中断されました")
+				os.Exit(1)
+			}
 			choice = strings.TrimSpace(choice)
 			switch choice {
 			case "〇", "○", "o", "O", "0":

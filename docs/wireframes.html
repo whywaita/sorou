@@ -134,6 +134,23 @@
     font-weight: bold;
   }
 
+  /* デフォルト開始時刻 + カレンダー日付ピッカー（F-30 候補日入力改善） */
+  .time-default { display: flex; align-items: center; gap: 8px; }
+  .time-default .input { width: 88px; height: 34px; text-align: center; margin: 0; background: #fff; }
+  .time-default .suffix { font-size: 11px; color: var(--muted); }
+  .calendar { border: 1.5px solid var(--line); border-radius: 4px; padding: 8px; background: #fff; }
+  .cal-nav { display: flex; align-items: center; justify-content: space-between; font-size: 12px; font-weight: bold; margin-bottom: 6px; }
+  .cal-nav .arrow { border: 1px solid var(--line); border-radius: 4px; padding: 0 9px; cursor: pointer; color: var(--muted); }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+  .cal-grid .dow { font-size: 10px; color: var(--muted); text-align: center; padding: 2px 0; }
+  .cal-grid .dow.sun { color: #b04; }
+  .cal-grid .dow.sat { color: #2563eb; }
+  .cal-day { text-align: center; font-size: 11px; padding: 6px 0; border-radius: 4px; cursor: pointer; border: 1px solid transparent; }
+  .cal-day:hover { background: var(--fill); }
+  .cal-day.empty { cursor: default; }
+  .cal-day.selected { background: var(--ink); color: #fff; font-weight: bold; }
+  .cal-hint { font-size: 10px; color: var(--muted); margin-top: 6px; text-align: center; }
+
   /* エラー表示 */
   .error-box {
     border: 1.5px solid #b04;
@@ -283,7 +300,7 @@
       </div>
       <div class="viewport">
         <div class="app-header">
-          <h1>📅 sorou（揃う）</h1>
+          <h1>sorou（揃う）</h1>
           <p>シンプルな日程調整ツール</p>
         </div>
 
@@ -299,12 +316,42 @@
           <div class="hint">最大500文字</div>
         </div>
 
+        <!-- デフォルト開始時刻（F-30）— カレンダーで選んだ日に自動付与 -->
+        <div class="field">
+          <label class="label">デフォルト開始時刻</label>
+          <div class="time-default">
+            <div class="input">19:00</div>
+            <span class="suffix">〜（選んだ日にこの時刻で挿入）</span>
+          </div>
+          <div class="hint">変更してから日付を選ぶと、その時刻で挿入される</div>
+        </div>
+
+        <!-- 候補日：カレンダーで日付をクリック → textarea に行を挿入（F-30） -->
         <div class="field">
           <label class="label">候補日時 <span class="req">*</span>（1行1候補）</label>
-          <div class="textarea">6/15(月) 19:00-
-6/16(火) 19:00-
-6/17(水) 19:00-</div>
-          <div class="hint">最大30候補・空行は除去</div>
+          <div class="calendar">
+            <div class="cal-nav">
+              <span class="arrow">‹</span>
+              <span>2026年 6月</span>
+              <span class="arrow">›</span>
+            </div>
+            <div class="cal-grid">
+              <span class="dow sun">日</span><span class="dow">月</span><span class="dow">火</span><span class="dow">水</span><span class="dow">木</span><span class="dow">金</span><span class="dow sat">土</span>
+              <span class="cal-day empty"></span>
+              <span class="cal-day">1</span><span class="cal-day">2</span><span class="cal-day">3</span><span class="cal-day">4</span><span class="cal-day">5</span><span class="cal-day">6</span>
+              <span class="cal-day">7</span><span class="cal-day">8</span><span class="cal-day">9</span><span class="cal-day">10</span><span class="cal-day">11</span><span class="cal-day">12</span><span class="cal-day">13</span>
+              <span class="cal-day">14</span><span class="cal-day selected">15</span><span class="cal-day selected">16</span><span class="cal-day selected">17</span><span class="cal-day">18</span><span class="cal-day">19</span><span class="cal-day">20</span>
+              <span class="cal-day">21</span><span class="cal-day">22</span><span class="cal-day">23</span><span class="cal-day">24</span><span class="cal-day">25</span><span class="cal-day">26</span><span class="cal-day">27</span>
+              <span class="cal-day">28</span><span class="cal-day">29</span><span class="cal-day">30</span>
+            </div>
+            <p class="cal-hint">初期表示はアクセスした時点の当月（例: 2026年6月）。日付をクリックすると下の入力欄に行が挿入される</p>
+          </div>
+
+          <!-- 挿入先は従来どおり textarea（チップなし・自由編集可） -->
+          <div class="textarea" style="margin-top:10px;">6/15(月) 19:00〜
+6/16(火) 19:00〜
+6/17(水) 19:00〜</div>
+          <div class="hint">カレンダーは入力補助。行は直接編集・削除も可／最大30候補・空行は除去</div>
         </div>
 
         <div class="btn">イベントを作成</div>
@@ -322,11 +369,11 @@
       </div>
       <div class="viewport">
         <div class="app-header">
-          <h1>📅 sorou（揃う）</h1>
+          <h1>sorou（揃う）</h1>
           <p>シンプルな日程調整ツール</p>
         </div>
 
-        <div class="error-box">⚠ 入力内容を確認してください</div>
+        <div class="error-box">入力内容を確認してください</div>
 
         <div class="field">
           <label class="label">イベント名 <span class="req">*</span></label>
@@ -341,8 +388,30 @@
         </div>
 
         <div class="field">
+          <label class="label">デフォルト開始時刻</label>
+          <div class="time-default">
+            <div class="input">19:00</div>
+            <span class="suffix">〜（選んだ日にこの時刻で追加）</span>
+          </div>
+        </div>
+
+        <div class="field">
           <label class="label">候補日時 <span class="req">*</span>（1行1候補）</label>
-          <div class="textarea is-error"></div>
+          <div class="calendar">
+            <div class="cal-nav">
+              <span class="arrow">‹</span>
+              <span>2026年 6月</span>
+              <span class="arrow">›</span>
+            </div>
+            <div class="cal-grid">
+              <span class="dow sun">日</span><span class="dow">月</span><span class="dow">火</span><span class="dow">水</span><span class="dow">木</span><span class="dow">金</span><span class="dow sat">土</span>
+              <span class="cal-day empty"></span>
+              <span class="cal-day">1</span><span class="cal-day">2</span><span class="cal-day">3</span><span class="cal-day">4</span><span class="cal-day">5</span><span class="cal-day">6</span>
+              <span class="cal-day">7</span><span class="cal-day">8</span><span class="cal-day">9</span><span class="cal-day">10</span><span class="cal-day">11</span><span class="cal-day">12</span><span class="cal-day">13</span>
+            </div>
+            <p class="cal-hint">初期表示はアクセスした時点の当月。日付をクリックすると下の入力欄に行が挿入される</p>
+          </div>
+          <div class="textarea is-error" style="margin-top:10px;"></div>
           <div class="field-error">候補日が入力されていません</div>
         </div>
 
@@ -361,7 +430,7 @@
       </div>
       <div class="viewport">
         <div class="app-header" style="text-align:left;">
-          <h1>📅 飲み会の日程調整</h1>
+          <h1>飲み会の日程調整</h1>
           <p>メモ: お店は決まり次第連絡します</p>
         </div>
 
@@ -388,9 +457,9 @@
         <hr class="section-divider">
 
         <!-- 回答フォーム（編集モード: whytaro をクリックした状態 / F-19） -->
-        <p class="section-title">📝 whytaro さんの回答を編集</p>
+        <p class="section-title">whytaro さんの回答を編集</p>
         <div class="edit-banner">
-          <span>✎ 既存回答をプリフィル中（?edit=whytaro）</span>
+          <span>既存回答をプリフィル中（?edit=whytaro）</span>
           <span class="reset">新規回答に戻す</span>
         </div>
 
@@ -436,7 +505,7 @@
         <hr class="section-divider">
 
         <!-- 共有URL -->
-        <p class="section-title">🔗 共有URL</p>
+        <p class="section-title">共有URL</p>
         <div class="share">
           <span class="url-text">https://sorou.example.com/e/01ARZ3NDEK…</span>
           <span class="copy-btn">コピー</span>
@@ -455,7 +524,7 @@
       </div>
       <div class="viewport">
         <div class="app-header">
-          <h1>📅 sorou（揃う）</h1>
+          <h1>sorou（揃う）</h1>
         </div>
         <div class="notfound">
           <p class="code">404</p>
@@ -475,7 +544,7 @@
       </div>
       <div class="viewport">
         <div class="admin-header">
-          <h1>🔒 管理画面</h1>
+          <h1>管理画面</h1>
         </div>
 
         <p class="hint" style="margin-bottom:14px;">セッション Cookie が無い、または失効している場合に表示。</p>
@@ -502,10 +571,10 @@
       </div>
       <div class="viewport">
         <div class="admin-header">
-          <h1>🔒 管理画面</h1>
+          <h1>管理画面</h1>
         </div>
 
-        <div class="error-box">⚠ パスワードが違います</div>
+        <div class="error-box">パスワードが違います</div>
 
         <form>
           <div class="field">
@@ -529,18 +598,18 @@
       </div>
       <div class="viewport">
         <div class="admin-header">
-          <h1>🔒 管理画面</h1>
+          <h1>管理画面</h1>
         </div>
 
         <!-- 検索（F-24：イベント名 インクリメンタルフィルター / クライアントサイド） -->
         <div class="search-bar">
-          <div class="input">🔍 飲み</div>
+          <div class="input">飲み</div>
         </div>
         <p class="hint" style="margin:-8px 0 12px;">入力に応じてその場で行を絞り込み（ページ遷移・サーバー往復なし）</p>
 
         <!-- 削除確認（F-25：確認後に削除） -->
         <div class="confirm-overlay">
-          ⚠「飲み会の日程調整」を削除しますか？候補日・回答も全て削除されます。
+          「飲み会の日程調整」を削除しますか？候補日・回答も全て削除されます。
           <div class="actions">
             <span>削除する</span>
             <span>キャンセル</span>

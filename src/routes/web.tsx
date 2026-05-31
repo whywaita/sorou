@@ -6,6 +6,8 @@ import { ulid } from "../lib/ulid";
 import { TopPage } from "../views/top";
 import { EventPage } from "../views/event";
 import { NotFoundPage } from "../views/error";
+import { PrivacyPage } from "../views/privacy";
+import { TermsPage } from "../views/terms";
 import { renderOgpImage } from "../lib/ogp";
 import { eq } from "drizzle-orm";
 import type { Event } from "../types";
@@ -198,6 +200,16 @@ web.post("/e/:id/responses", async (c) => {
   }
 
   return c.redirect(`/e/${eventId}`);
+});
+
+// GET /privacy
+web.get("/privacy", (c) => {
+  return c.html(<PrivacyPage currentUrl={currentUrl(c)} />);
+});
+
+// GET /terms
+web.get("/terms", (c) => {
+  return c.html(<TermsPage currentUrl={currentUrl(c)} />);
 });
 
 export async function loadEvent(

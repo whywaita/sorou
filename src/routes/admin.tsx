@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { createDB } from "../db";
 import { events, candidates, responses } from "../db/schema";
-import { eq, like } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import {
   isAdminEnabled,

@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { csrf, rateLimit } from "./lib/middleware";
+import { setAdminPassword } from "./lib/session";
 import web from "./routes/web";
 import api from "./routes/api";
 import admin from "./routes/admin";
@@ -8,7 +9,7 @@ const app = new Hono<{ Bindings: { DB: D1Database; ADMIN_PASSWORD: string } }>()
 
 // Make ADMIN_PASSWORD available globally
 app.use("*", async (c, next) => {
-  (globalThis as any).ADMIN_PASSWORD = c.env.ADMIN_PASSWORD ?? "";
+  setAdminPassword(c.env.ADMIN_PASSWORD ?? "");
   await next();
 });
 

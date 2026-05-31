@@ -11,7 +11,7 @@ import type { Event } from "../types";
 
 const web = new Hono<{ Bindings: { DB: D1Database } }>();
 
-function getDomain(c: any): string {
+function getDomain(c: { req: { header: (name: string) => string | undefined } }): string {
   const host =
     c.req.header("host") || "localhost:8787";
   const proto = host.startsWith("localhost") ? "http" : "https";

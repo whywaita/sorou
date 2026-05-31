@@ -1,6 +1,6 @@
 import { html } from "hono/html";
 
-export const Layout = (props: { title: string; children: any }) => html`<!DOCTYPE html>
+export const Layout = (props: { title: string; children: unknown }) => html`<!DOCTYPE html>
   <html lang="ja">
     <head>
       <meta charset="UTF-8" />

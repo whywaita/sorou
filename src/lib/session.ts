@@ -1,11 +1,17 @@
 import { getCookie, setCookie } from "hono/cookie";
+import type { Context } from "hono";
 
 const COOKIE_NAME = "admin_session";
 const MAX_AGE = 86400; // 24 hours
 
+let _adminPassword = "";
+
+export function setAdminPassword(pw: string): void {
+  _adminPassword = pw;
+}
+
 export function getAdminPassword(): string | undefined {
-  const pw = (globalThis as any).ADMIN_PASSWORD || "";
-  return pw.trim() || undefined;
+  return _adminPassword.trim() || undefined;
 }
 
 export function isAdminEnabled(): boolean {
@@ -19,7 +25,7 @@ export async function verifyPassword(password: string): Promise<boolean> {
   return password === expected || (await sha256(password)) === hash;
 }
 
-export function setSessionCookie(c: any): void {
+export function setSessionCookie(c: Context): void {
   const password = getAdminPassword();
   if (!password) return;
   sha256(password).then((hash) => {
@@ -33,7 +39,7 @@ export function setSessionCookie(c: any): void {
   });
 }
 
-export async function isAdmin(c: any): Promise<boolean> {
+export async function isAdmin(c: Context): Promise<boolean> {
   if (!isAdminEnabled()) return false;
   const cookie = getCookie(c, COOKIE_NAME);
   if (!cookie) return false;

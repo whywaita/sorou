@@ -45,7 +45,7 @@ export function EventPage(props: {
               </tr>
             </thead>
             <tbody>
-              {ev.candidates.map((c, ci) => {
+              {ev.candidates.map((c) => {
                 const count = latestCounts[c.id] ?? { yes: 0, maybe: 0, no: 0 };
                 const isBest =
                   bestCandidateIds(ev.candidates, responses).has(c.id);

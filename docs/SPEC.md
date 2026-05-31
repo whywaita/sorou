@@ -483,7 +483,9 @@ ORDER BY c.sort_order
 sorou/
 ├── .github/
 │   └── workflows/
-│       └── deploy.yaml              # CI: wrangler deploy
+│       ├── test.yaml                # CI: Vitest (unit + integration)
+│       ├── lint.yaml                # CI: ESLint + Prettier + actionlint
+│       └── deploy.yaml              # CD: wrangler deploy
 ├── docs/
 │   ├── DESIGN.md                    # 本ドキュメント
 │   └── SPEC.md                      # 要件定義（本ファイル）
@@ -527,6 +529,74 @@ sorou/
 | ユニットテスト | Zod バリデーション、ULID 生成、データ変換 | Vitest |
 | 結合テスト | Hono ルートハンドラ + D1（miniflare） | Vitest + miniflare |
 | E2E | ブラウザ操作（作成→回答→表示） | Playwright (optional) |
+
+### 8.1 CI/CD パイプライン
+
+```yaml
+# .github/workflows/test.yaml
+name: test
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: npm ci
+      - run: npm test
+```
+
+```yaml
+# .github/workflows/lint.yaml
+name: lint
+on: [push, pull_request]
+jobs:
+  eslint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: npm ci
+      - run: npm run lint           # ESLint + Prettier
+
+  actionlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker://rhysd/actionlint:latest
+        with:
+          args: -color
+```
+
+```yaml
+# .github/workflows/deploy.yaml
+name: deploy
+on:
+  push:
+    branches: [main]
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: npm ci
+      - run: npm run build
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+```
+
+### 8.2 監査ツール
+
+| ツール | 用途 | 実行方法 |
+|--------|------|----------|
+| **ESLint** | TypeScript コード品質 | `npm run lint` |
+| **Prettier** | コードフォーマット | `npm run format` |
+| **actionlint** | GitHub Actions workflow 静的解析 | `actionlint` または CI 上で実行 |
 
 ---
 

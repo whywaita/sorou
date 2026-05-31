@@ -231,6 +231,20 @@
   .notfound .code { font-size: 64px; font-weight: bold; color: var(--line); margin: 0; }
   .notfound .msg { font-size: 14px; margin: 8px 0 20px; }
 
+  /* 管理画面 */
+  .admin-header { display: flex; align-items: center; gap: 6px; border-bottom: 1px dashed var(--line); padding-bottom: 12px; margin-bottom: 16px; }
+  .admin-header h1 { font-size: 18px; margin: 0; }
+  .search-bar { display: flex; gap: 6px; align-items: center; margin-bottom: 14px; }
+  .search-bar .input { flex: 1; margin: 0; }
+  .search-bar .copy-btn { padding: 7px 12px; }
+  .admin-table td.event-name { text-align: left; }
+  .admin-table .created { white-space: nowrap; color: var(--muted); font-size: 10px; }
+  .del-btn { border: 1.5px solid #b04; color: #b04; background: #fff; border-radius: 4px; padding: 2px 8px; font-size: 11px; font-weight: bold; cursor: pointer; }
+  .admin-count { font-size: 10px; color: var(--muted); margin: 8px 0 0; text-align: right; }
+  .confirm-overlay { border: 1.5px solid #b04; background: #fbeaea; color: #b04; border-radius: 4px; padding: 8px 10px; font-size: 11px; margin-bottom: 12px; }
+  .confirm-overlay .actions { display: flex; gap: 8px; margin-top: 6px; }
+  .confirm-overlay .actions span { border: 1.5px solid #b04; border-radius: 4px; padding: 2px 10px; background: #fff; cursor: pointer; }
+
   .note {
     max-width: 1280px;
     margin: 0 auto 24px;
@@ -252,7 +266,9 @@
 
   <div class="note">
     対象画面: <b>① トップ（作成フォーム）</b> / <b>② トップ（バリデーションエラー）</b> /
-    <b>③ イベント詳細（出欠表 + 回答フォーム + 共有URL）</b> / <b>④ 404</b>。
+    <b>③ イベント詳細（出欠表 + 回答フォーム + 共有URL）</b> / <b>④ 404</b> /
+    <b>⑤ 管理画面ログイン</b> / <b>⑥ 管理画面ログイン（エラー）</b> /
+    <b>⑦ 管理画面イベント一覧（検索 + 削除）</b>。
     REST API（<code>/api/*</code>）は JSON のため UI なし。
   </div>
 
@@ -446,6 +462,128 @@
           <p class="msg">イベントが見つかりません</p>
           <div class="btn" style="width:auto; display:inline-block; padding:9px 24px;">トップへ戻る</div>
         </div>
+        <div class="app-footer">sorou — powered by whywrite.it</div>
+      </div>
+    </section>
+
+    <!-- ⑤ 管理画面：ログインフォーム ───────────────────────── -->
+    <section class="screen">
+      <div class="screen-label"><span>⑤ 管理画面ログイン（F-21）</span><span class="route">GET /admin（未認証）</span></div>
+      <div class="browser-bar">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="url">https://sorou.example.com/admin</span>
+      </div>
+      <div class="viewport">
+        <div class="admin-header">
+          <h1>🔒 管理画面</h1>
+        </div>
+
+        <p class="hint" style="margin-bottom:14px;">セッション Cookie が無い、または失効している場合に表示。</p>
+
+        <form>
+          <div class="field">
+            <label class="label">パスワード <span class="req">*</span></label>
+            <div class="input">••••••••</div>
+            <div class="hint">環境変数 <code>ADMIN_PASSWORD</code> と照合（SHA-256）</div>
+          </div>
+          <div class="btn">ログイン</div>
+        </form>
+
+        <div class="app-footer">sorou — powered by whywrite.it</div>
+      </div>
+    </section>
+
+    <!-- ⑥ 管理画面：ログインエラー ─────────────────────────── -->
+    <section class="screen">
+      <div class="screen-label"><span>⑥ ログインエラー（F-26）</span><span class="route">POST /admin/login → 200</span></div>
+      <div class="browser-bar">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="url">https://sorou.example.com/admin/login</span>
+      </div>
+      <div class="viewport">
+        <div class="admin-header">
+          <h1>🔒 管理画面</h1>
+        </div>
+
+        <div class="error-box">⚠ パスワードが違います</div>
+
+        <form>
+          <div class="field">
+            <label class="label">パスワード <span class="req">*</span></label>
+            <div class="input is-error">••••••••</div>
+            <div class="field-error">もう一度入力してください</div>
+          </div>
+          <div class="btn">ログイン</div>
+        </form>
+
+        <div class="app-footer">sorou — powered by whywrite.it</div>
+      </div>
+    </section>
+
+    <!-- ⑦ 管理画面：イベント一覧（検索 + 削除） ──────────────── -->
+    <section class="screen" style="width: 440px;">
+      <div class="screen-label"><span>⑦ イベント一覧（F-23〜25）</span><span class="route">GET /admin（認証済）</span></div>
+      <div class="browser-bar">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="url">https://sorou.example.com/admin</span>
+      </div>
+      <div class="viewport">
+        <div class="admin-header">
+          <h1>🔒 管理画面</h1>
+        </div>
+
+        <!-- 検索（F-24：イベント名 部分一致） -->
+        <form class="search-bar">
+          <div class="input">飲み</div>
+          <span class="copy-btn">🔍 検索</span>
+        </form>
+
+        <!-- 削除確認（F-25：確認後に削除） -->
+        <div class="confirm-overlay">
+          ⚠「飲み会の日程調整」を削除しますか？候補日・回答も全て削除されます。
+          <div class="actions">
+            <span>削除する</span>
+            <span>キャンセル</span>
+          </div>
+        </div>
+
+        <!-- イベント一覧 -->
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th style="text-align:left;">イベント名</th>
+              <th>作成日時</th>
+              <th>候補</th>
+              <th>回答</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="event-name">飲み会の日程調整</td>
+              <td class="created">06/01 12:00</td>
+              <td>3</td>
+              <td>2</td>
+              <td><span class="del-btn">削除</span></td>
+            </tr>
+            <tr>
+              <td class="event-name">歓迎会</td>
+              <td class="created">06/01 13:00</td>
+              <td>5</td>
+              <td>1</td>
+              <td><span class="del-btn">削除</span></td>
+            </tr>
+            <tr>
+              <td class="event-name">勉強会</td>
+              <td class="created">05/30 09:00</td>
+              <td>2</td>
+              <td>0</td>
+              <td><span class="del-btn">削除</span></td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="admin-count">全 12 件 / 「飲み」で絞り込み中</p>
+
         <div class="app-footer">sorou — powered by whywrite.it</div>
       </div>
     </section>

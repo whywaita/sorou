@@ -1,6 +1,9 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
-import { createEventJsonSchema, addResponseJsonSchema } from "../lib/validation";
+import {
+  createEventJsonSchema,
+  addResponseJsonSchema,
+} from "../lib/validation";
 import { createDB } from "../db";
 import { events, candidates, responses, responseDetails } from "../db/schema";
 import { ulid } from "../lib/ulid";
@@ -9,7 +12,9 @@ import type { Event } from "../types";
 
 const api = new Hono<{ Bindings: { DB: D1Database } }>();
 
-function getDomain(c: { req: { header: (name: string) => string | undefined } }): string {
+function getDomain(c: {
+  req: { header: (name: string) => string | undefined };
+}): string {
   const host = c.req.header("host") || "localhost:8787";
   const proto = host.startsWith("localhost") ? "http" : "https";
   return `${proto}://${host}`;
@@ -49,7 +54,7 @@ api.post("/events", zValidator("json", createEventJsonSchema), async (c) => {
       created_at: event!.createdAt,
       url: `${domain}/e/${id}`,
     },
-    201
+    201,
   );
 });
 
@@ -59,7 +64,10 @@ api.get("/events/:id", async (c) => {
   const db = createDB(c.env.DB);
   const event = await loadEvent(db, id);
   if (!event) {
-    return c.json({ error: "not_found", message: "イベントが見つかりません" }, 404);
+    return c.json(
+      { error: "not_found", message: "イベントが見つかりません" },
+      404,
+    );
   }
 
   const domain = getDomain(c);
@@ -99,7 +107,10 @@ api.post(
       .where(eq(events.id, eventId))
       .limit(1);
     if (eventRows.length === 0) {
-      return c.json({ error: "not_found", message: "イベントが見つかりません" }, 404);
+      return c.json(
+        { error: "not_found", message: "イベントが見つかりません" },
+        404,
+      );
     }
 
     // Check all candidate_ids are valid
@@ -114,9 +125,11 @@ api.post(
           {
             error: "validation_error",
             message: "入力内容を確認してください",
-            details: { statuses: [`候補日ID ${s.candidate_id} は存在しません`] },
+            details: {
+              statuses: [`候補日ID ${s.candidate_id} は存在しません`],
+            },
           },
-          400
+          400,
         );
       }
     }
@@ -128,8 +141,8 @@ api.post(
       .where(
         and(
           eq(responses.eventId, eventId),
-          eq(responses.participantName, data.participant_name)
-        )
+          eq(responses.participantName, data.participant_name),
+        ),
       )
       .limit(1);
 
@@ -137,7 +150,9 @@ api.post(
     let updated = false;
     if (existing.length > 0) {
       responseId = existing[0].id;
-      await db.delete(responseDetails).where(eq(responseDetails.responseId, responseId));
+      await db
+        .delete(responseDetails)
+        .where(eq(responseDetails.responseId, responseId));
       updated = true;
     } else {
       const inserted = await db
@@ -167,17 +182,24 @@ api.post(
         candidate_id: s.candidate_id,
         status: s.status,
       })),
-      created_at: existing.length > 0 ? existing[0].createdAt : new Date().toISOString().split(".")[0] + "Z",
+      created_at:
+        existing.length > 0
+          ? existing[0].createdAt
+          : new Date().toISOString().split(".")[0] + "Z",
       updated,
     });
-  }
+  },
 );
 
 async function loadEvent(
   db: ReturnType<typeof createDB>,
-  id: string
+  id: string,
 ): Promise<Event | null> {
-  const eventRows = await db.select().from(events).where(eq(events.id, id)).limit(1);
+  const eventRows = await db
+    .select()
+    .from(events)
+    .where(eq(events.id, id))
+    .limit(1);
   if (eventRows.length === 0) return null;
 
   const ev = eventRows[0];

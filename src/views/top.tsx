@@ -9,7 +9,7 @@ export function TopPage(props: {
 
   return (
     <Layout title="新しいイベントを作成">
-      <h1 class="text-2xl font-bold mb-6">📅 新しいイベントを作成</h1>
+      <h1 class="text-2xl font-bold mb-6">新しいイベントを作成</h1>
       <form
         method="post"
         action="/events"
@@ -17,7 +17,10 @@ export function TopPage(props: {
       >
         {/* Name */}
         <div>
-          <label for="name" class="block text-sm font-medium text-slate-700 mb-1">
+          <label
+            for="name"
+            class="block text-sm font-medium text-slate-700 mb-1"
+          >
             イベント名 <span class="text-red-500">*</span>
           </label>
           <input
@@ -36,7 +39,10 @@ export function TopPage(props: {
 
         {/* Memo */}
         <div>
-          <label for="memo" class="block text-sm font-medium text-slate-700 mb-1">
+          <label
+            for="memo"
+            class="block text-sm font-medium text-slate-700 mb-1"
+          >
             メモ
           </label>
           <input
@@ -52,7 +58,10 @@ export function TopPage(props: {
 
         {/* Dates */}
         <div>
-          <label for="dates" class="block text-sm font-medium text-slate-700 mb-1">
+          <label
+            for="dates"
+            class="block text-sm font-medium text-slate-700 mb-1"
+          >
             候補日時 <span class="text-red-500">*</span>
           </label>
           <textarea
@@ -64,9 +73,13 @@ export function TopPage(props: {
               e.dates ? "border-red-400" : "border-slate-300"
             }`}
             placeholder={"6/15(月) 19:00-\n6/16(火) 19:00-\n6/17(水) 19:00-"}
-          >{v.dates ?? ""}</textarea>
+          >
+            {v.dates ?? ""}
+          </textarea>
           {e.dates && <p class="text-red-500 text-xs mt-1">{e.dates[0]}</p>}
-          <p class="text-slate-400 text-xs mt-1">1行に1つの候補日時を入力してください（最大30候補）</p>
+          <p class="text-slate-400 text-xs mt-1">
+            1行に1つの候補日時を入力してください（最大30候補）
+          </p>
         </div>
 
         <button

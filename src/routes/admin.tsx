@@ -69,8 +69,7 @@ admin.get("/admin", async (c) => {
 
   // Sort by created_at desc
   list.sort(
-    (a, b) =>
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
   );
 
   return c.html(<AdminEventList events={list} query={query || undefined} />);
@@ -82,9 +81,7 @@ admin.post("/admin/login", async (c) => {
   const password = (body.password as string)?.trim() ?? "";
 
   if (!password || !(await verifyPassword(password))) {
-    return c.html(
-      <AdminLoginPage error="パスワードが違います" />
-    );
+    return c.html(<AdminLoginPage error="パスワードが違います" />);
   }
 
   setSessionCookie(c);

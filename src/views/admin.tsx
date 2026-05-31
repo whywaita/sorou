@@ -3,7 +3,7 @@ import { Layout } from "./layout";
 export function AdminLoginPage(props: { error?: string }) {
   return (
     <Layout title="管理画面">
-      <h1 class="text-2xl font-bold mb-6">🔒 管理画面</h1>
+      <h1 class="text-2xl font-bold mb-6">管理画面</h1>
       <form
         method="post"
         action="/admin/login"
@@ -54,7 +54,7 @@ export function AdminEventList(props: {
 }) {
   return (
     <Layout title="管理画面">
-      <h1 class="text-2xl font-bold mb-6">🔒 管理画面</h1>
+      <h1 class="text-2xl font-bold mb-6">管理画面</h1>
 
       {/* Search */}
       <form method="get" action="/admin" class="mb-6">
@@ -70,7 +70,7 @@ export function AdminEventList(props: {
             type="submit"
             class="px-4 py-2 bg-brand hover:bg-brand-hover text-white rounded-md text-sm transition"
           >
-            🔍
+            検索
           </button>
           {props.query && (
             <a
@@ -87,7 +87,9 @@ export function AdminEventList(props: {
       <div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-x-auto">
         {props.events.length === 0 ? (
           <p class="p-6 text-slate-400 text-center">
-            {props.query ? "該当するイベントがありません" : "イベントがありません"}
+            {props.query
+              ? "該当するイベントがありません"
+              : "イベントがありません"}
           </p>
         ) : (
           <table class="w-full text-sm">
@@ -132,7 +134,7 @@ export function AdminEventList(props: {
                         type="submit"
                         class="text-red-500 hover:text-red-700 text-xs font-medium hover:underline"
                       >
-                        ✕ 削除
+                        削除
                       </button>
                     </form>
                   </td>
@@ -145,12 +147,7 @@ export function AdminEventList(props: {
 
       <p class="text-slate-400 text-xs mt-4">
         全 {props.events.length} 件
-        {props.query && (
-          <span>
-            {" "}
-            （検索: "{escapeHtml(props.query)}"）
-          </span>
-        )}
+        {props.query && <span> （検索: "{escapeHtml(props.query)}"）</span>}
       </p>
     </Layout>
   );

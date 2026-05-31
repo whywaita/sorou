@@ -68,8 +68,11 @@ export function rateLimit(maxRequests: number, windowSeconds: number) {
     entry.count++;
     if (entry.count > maxRequests) {
       return c.json(
-        { error: "rate_limited", message: "リクエストが多すぎます。しばらく待ってください。" },
-        429
+        {
+          error: "rate_limited",
+          message: "リクエストが多すぎます。しばらく待ってください。",
+        },
+        429,
       );
     }
 

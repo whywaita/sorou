@@ -11,9 +11,10 @@ import type { Event } from "../types";
 
 const web = new Hono<{ Bindings: { DB: D1Database } }>();
 
-function getDomain(c: { req: { header: (name: string) => string | undefined } }): string {
-  const host =
-    c.req.header("host") || "localhost:8787";
+function getDomain(c: {
+  req: { header: (name: string) => string | undefined };
+}): string {
+  const host = c.req.header("host") || "localhost:8787";
   const proto = host.startsWith("localhost") ? "http" : "https";
   return `${proto}://${host}`;
 }
@@ -42,7 +43,7 @@ web.post("/events", async (c) => {
           memo: body.memo as string,
           dates: body.dates as string,
         }}
-      />
+      />,
     );
   }
 
@@ -75,16 +76,14 @@ web.get("/e/:id", async (c) => {
   if (!event) return c.html(<NotFoundPage />);
 
   const editParam = c.req.query("edit");
-  const editData = editParam
-    ? getEditData(event, editParam)
-    : undefined;
+  const editData = editParam ? getEditData(event, editParam) : undefined;
 
   return c.html(
     <EventPage
       event={event}
       shareUrl={`${getDomain(c)}/e/${id}`}
       edit={editData}
-    />
+    />,
   );
 });
 
@@ -104,9 +103,7 @@ web.post("/e/:id/responses", async (c) => {
   const errors: Record<string, string[]> = {};
   if (!participantName || participantName.length > 50) {
     errors.participant_name = [
-      participantName
-        ? "お名前は50文字以内です"
-        : "お名前は必須です",
+      participantName ? "お名前は50文字以内です" : "お名前は必須です",
     ];
   }
   if (comment.length > 200) {
@@ -134,7 +131,7 @@ web.post("/e/:id/responses", async (c) => {
           comment,
           statuses: statusMap,
         }}
-      />
+      />,
     );
   }
 
@@ -145,8 +142,8 @@ web.post("/e/:id/responses", async (c) => {
     .select()
     .from(respTable)
     .where(
-      eq(respTable.eventId, eventId)
-      && eq(respTable.participantName, participantName)
+      eq(respTable.eventId, eventId) &&
+        eq(respTable.participantName, participantName),
     )
     .limit(1);
 
@@ -179,7 +176,7 @@ web.post("/e/:id/responses", async (c) => {
 
 export async function loadEvent(
   db: ReturnType<typeof createDB>,
-  id: string
+  id: string,
 ): Promise<Event | null> {
   const eventRows = await db
     .select()
@@ -238,10 +235,10 @@ export async function loadEvent(
 
 function getEditData(
   event: Event,
-  participantName: string
+  participantName: string,
 ): { name: string; comment: string; statuses: Record<number, string> } {
   const resp = event.responses.find(
-    (r) => r.participantName === participantName
+    (r) => r.participantName === participantName,
   );
   if (!resp) {
     return { name: participantName, comment: "", statuses: {} };

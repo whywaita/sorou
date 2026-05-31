@@ -5,7 +5,9 @@ import web from "./routes/web";
 import api from "./routes/api";
 import admin from "./routes/admin";
 
-const app = new Hono<{ Bindings: { DB: D1Database; ADMIN_PASSWORD: string } }>();
+const app = new Hono<{
+  Bindings: { DB: D1Database; ADMIN_PASSWORD: string };
+}>();
 
 // Make ADMIN_PASSWORD available globally
 app.use("*", async (c, next) => {

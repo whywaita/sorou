@@ -1,6 +1,7 @@
 name = "sorou"
 main = "src/index.ts"
 compatibility_date = "2025-01-01"
+account_id = "${CLOUDFLARE_ACCOUNT_ID}"
 
 [vars]
 ADMIN_PASSWORD = ""

@@ -10,6 +10,9 @@ head_sampling_rate = 1
 #   wrangler secret put ADMIN_PASSWORD
 # 未設定時は管理画面が無効化される (F-27)。
 
+[assets]
+directory = "./public"
+
 [[d1_databases]]
 binding = "DB"
 database_name = "sorou-db"

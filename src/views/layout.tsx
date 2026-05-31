@@ -1,12 +1,56 @@
 import { html } from "hono/html";
 
-export const Layout = (props: { title: string; children: unknown }) =>
-  html`<!DOCTYPE html>
+interface LayoutProps {
+  title: string;
+  description?: string;
+  ogImage?: string;
+  ogType?: "website" | "article";
+  canonicalPath?: string;
+  children: unknown;
+}
+
+const SITE_NAME = "sorou";
+const BASE_URL = "https://sorou.qh.nu";
+const DEFAULT_DESCRIPTION = "認証不要のシンプルな日程調整ツール。イベントを作成してURLを共有するだけで、参加者の出欠を収集・可視化できます。";
+const DEFAULT_OG_IMAGE = `${BASE_URL}/ogp.svg`;
+
+export const Layout = (props: LayoutProps) => {
+  const desc = props.description ?? DEFAULT_DESCRIPTION;
+  const ogImage = props.ogImage ?? DEFAULT_OG_IMAGE;
+  const ogType = props.ogType ?? "website";
+  const canonical = props.canonicalPath ? `${BASE_URL}${props.canonicalPath}` : BASE_URL;
+  const titleFull = `${props.title} — ${SITE_NAME}`;
+
+  return html`<!DOCTYPE html>
     <html lang="ja">
       <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>${props.title} — sorou</title>
+        <title>${titleFull}</title>
+        <meta name="description" content="${desc}" />
+
+        <!-- Favicon -->
+        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+        <link rel="apple-touch-icon" href="/favicon.svg" />
+
+        <!-- OGP -->
+        <meta property="og:title" content="${titleFull}" />
+        <meta property="og:description" content="${desc}" />
+        <meta property="og:type" content="${ogType}" />
+        <meta property="og:url" content="${canonical}" />
+        <meta property="og:image" content="${ogImage}" />
+        <meta property="og:site_name" content="${SITE_NAME}" />
+        <meta property="og:locale" content="ja_JP" />
+
+        <!-- Twitter Card -->
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="${titleFull}" />
+        <meta name="twitter:description" content="${desc}" />
+        <meta name="twitter:image" content="${ogImage}" />
+
+        <!-- Canonical URL -->
+        <link rel="canonical" href="${canonical}" />
+
         <script src="https://cdn.tailwindcss.com"></script>
         <script>
           tailwind.config = {
@@ -39,3 +83,4 @@ export const Layout = (props: { title: string; children: unknown }) =>
         </footer>
       </body>
     </html>`;
+};

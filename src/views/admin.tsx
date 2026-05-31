@@ -2,7 +2,7 @@ import { Layout } from "./layout";
 
 export function AdminLoginPage(props: { error?: string }) {
   return (
-    <Layout title="管理画面">
+    <Layout title="管理画面" description="sorou 管理画面 — イベントの管理・削除">
       <h1 class="text-2xl font-bold mb-6">管理画面</h1>
       <form
         method="post"
@@ -53,7 +53,7 @@ export function AdminEventList(props: {
   query?: string;
 }) {
   return (
-    <Layout title="管理画面">
+    <Layout title="管理画面" description="sorou 管理画面 — イベントの管理・削除">
       <h1 class="text-2xl font-bold mb-6">管理画面</h1>
 
       {/* Search */}

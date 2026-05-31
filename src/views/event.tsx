@@ -12,7 +12,12 @@ export function EventPage(props: {
   const latestCounts = computeCounts(ev.candidates, responses);
 
   return (
-    <Layout title={ev.name}>
+    <Layout
+      title={ev.name}
+      description={ev.memo || `${ev.name} の日程調整 — 出欠を回答してください`}
+      ogType="article"
+      canonicalPath={`/e/${ev.id}`}
+    >
       <h1 class="text-2xl font-bold mb-1">{escapeHtml(ev.name)}</h1>
       {ev.memo && (
         <p class="text-slate-500 text-sm mb-6">{escapeHtml(ev.memo)}</p>

@@ -8,7 +8,10 @@ export function TopPage(props: {
   const v = props.values ?? {};
 
   return (
-    <Layout title="新しいイベントを作成">
+    <Layout
+      title="新しいイベントを作成"
+      description="sorou で新しいイベントを作成し、参加者の出欠を収集しましょう。認証不要ですぐに使えます。"
+    >
       <h1 class="text-2xl font-bold mb-6">新しいイベントを作成</h1>
       <form
         method="post"

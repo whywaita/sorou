@@ -5,11 +5,13 @@ import { events, candidates } from "../db/schema";
 import { ulid } from "../lib/ulid";
 import { TopPage } from "../views/top";
 import { EventPage } from "../views/event";
+import { EditEventPage } from "../views/edit";
 import { NotFoundPage } from "../views/error";
 import { PrivacyPage } from "../views/privacy";
 import { TermsPage } from "../views/terms";
 import { renderOgpImage } from "../lib/ogp";
-import { eq } from "drizzle-orm";
+import { getOrCreateCreatorTokenHash, isCreator } from "../lib/creator";
+import { eq, and } from "drizzle-orm";
 import type { Event } from "../types";
 
 const web = new Hono<{ Bindings: { DB: D1Database } }>();
@@ -60,10 +62,14 @@ web.post("/events", async (c) => {
   const db = createDB(c.env.DB);
   const id = ulid();
 
+  // Issue / reuse a creator token to link this browser to the event
+  const { hash: creatorTokenHash } = await getOrCreateCreatorTokenHash(c);
+
   await db.insert(events).values({
     id,
     name: result.data.name,
     memo: result.data.memo,
+    creatorTokenHash,
   });
 
   for (let i = 0; i < result.data.dates.length; i++) {
@@ -87,6 +93,7 @@ web.get("/e/:id", async (c) => {
 
   const editParam = c.req.query("edit");
   const editData = editParam ? getEditData(event, editParam) : undefined;
+  const creatorFlag = await isCreator(c, event.creatorTokenHash);
 
   return c.html(
     <EventPage
@@ -94,6 +101,7 @@ web.get("/e/:id", async (c) => {
       shareUrl={`${getDomain(c)}/e/${id}`}
       currentUrl={currentUrl(c)}
       edit={editData}
+      isCreator={creatorFlag}
     />,
   );
 });
@@ -148,6 +156,7 @@ web.post("/e/:id/responses", async (c) => {
   }
 
   if (Object.keys(errors).length > 0) {
+    const creatorFlag = await isCreator(c, event.creatorTokenHash);
     return c.html(
       <EventPage
         event={event}
@@ -159,6 +168,7 @@ web.post("/e/:id/responses", async (c) => {
           comment,
           statuses: statusMap,
         }}
+        isCreator={creatorFlag}
       />,
     );
   }
@@ -170,8 +180,10 @@ web.post("/e/:id/responses", async (c) => {
     .select()
     .from(respTable)
     .where(
-      eq(respTable.eventId, eventId) &&
+      and(
+        eq(respTable.eventId, eventId),
         eq(respTable.participantName, participantName),
+      ),
     )
     .limit(1);
 
@@ -200,6 +212,103 @@ web.post("/e/:id/responses", async (c) => {
   }
 
   return c.redirect(`/e/${eventId}`);
+});
+
+// ─── Edit event (creator only) ────────────────────────────────────
+
+// GET /e/:id/edit — show edit form
+web.get("/e/:id/edit", async (c) => {
+  const id = c.req.param("id");
+  const db = createDB(c.env.DB);
+
+  const event = await loadEvent(db, id);
+  if (!event) return c.html(<NotFoundPage currentUrl={currentUrl(c)} />, 404);
+
+  if (!(await isCreator(c, event.creatorTokenHash))) {
+    return c.html(<NotFoundPage currentUrl={currentUrl(c)} />, 404);
+  }
+
+  return c.html(
+    <EditEventPage
+      event={event}
+      currentUrl={currentUrl(c)}
+      shareUrl={`${getDomain(c)}/e/${id}`}
+    />,
+  );
+});
+
+// POST /e/:id/edit — update event
+web.post("/e/:id/edit", async (c) => {
+  const id = c.req.param("id");
+  const body = await c.req.parseBody();
+  const db = createDB(c.env.DB);
+
+  const event = await loadEvent(db, id);
+  if (!event) return c.html(<NotFoundPage currentUrl={currentUrl(c)} />, 404);
+
+  if (!(await isCreator(c, event.creatorTokenHash))) {
+    return c.html(<NotFoundPage currentUrl={currentUrl(c)} />, 404);
+  }
+
+  // Validate
+  const result = createEventSchema.safeParse(body);
+  if (!result.success) {
+    const fieldErrors: Record<string, string[]> = {};
+    for (const issue of result.error.issues) {
+      const key = issue.path[0] as string;
+      if (!fieldErrors[key]) fieldErrors[key] = [];
+      fieldErrors[key].push(issue.message);
+    }
+    return c.html(
+      <EditEventPage
+        event={event}
+        currentUrl={currentUrl(c)}
+        shareUrl={`${getDomain(c)}/e/${id}`}
+        errors={fieldErrors}
+        values={{
+          name: body.name as string,
+          memo: body.memo as string,
+          dates: body.dates as string,
+        }}
+      />,
+    );
+  }
+
+  // Update event name + memo
+  await db
+    .update(events)
+    .set({ name: result.data.name, memo: result.data.memo })
+    .where(eq(events.id, id));
+
+  // Replace candidates: delete old → insert new
+  await db.delete(candidates).where(eq(candidates.eventId, id));
+  for (let i = 0; i < result.data.dates.length; i++) {
+    await db.insert(candidates).values({
+      eventId: id,
+      date: result.data.dates[i],
+      sortOrder: i,
+    });
+  }
+
+  return c.redirect(`/e/${id}`);
+});
+
+// POST /e/:id/delete — delete event
+web.post("/e/:id/delete", async (c) => {
+  const id = c.req.param("id");
+  const db = createDB(c.env.DB);
+
+  const event = await loadEvent(db, id);
+  if (!event) return c.html(<NotFoundPage currentUrl={currentUrl(c)} />, 404);
+
+  if (!(await isCreator(c, event.creatorTokenHash))) {
+    return c.html(<NotFoundPage currentUrl={currentUrl(c)} />, 404);
+  }
+
+  // Cascade deletes candidates, responses, response_details
+  await db.delete(events).where(eq(events.id, id));
+
+  return c.redirect("/");
 });
 
 // GET /privacy
@@ -242,6 +351,7 @@ export async function loadEvent(
     id: ev.id,
     name: ev.name,
     memo: ev.memo,
+    creatorTokenHash: ev.creatorTokenHash,
     candidates: candRows.map((c) => ({
       id: c.id,
       date: c.date,

@@ -7,8 +7,15 @@ export function EventPage(props: {
   currentUrl: string;
   errors?: Record<string, string[]>;
   edit?: { name: string; comment: string; statuses: Record<number, string> };
+  isCreator?: boolean;
 }) {
-  const { event: ev, shareUrl, errors: e = {}, edit } = props;
+  const {
+    event: ev,
+    shareUrl,
+    errors: e = {},
+    edit,
+    isCreator = false,
+  } = props;
   const responses = ev.responses ?? [];
   const latestCounts = computeCounts(ev.candidates, responses);
 
@@ -20,7 +27,17 @@ export function EventPage(props: {
       ogImage={`${getOrigin(shareUrl)}/e/${ev.id}/ogp.png`}
       currentUrl={props.currentUrl}
     >
-      <h1 class="text-2xl font-bold mb-1">{escapeHtml(ev.name)}</h1>
+      <div class="flex items-start justify-between mb-1">
+        <h1 class="text-2xl font-bold">{escapeHtml(ev.name)}</h1>
+        {isCreator && (
+          <a
+            href={`/e/${ev.id}/edit`}
+            class="shrink-0 ml-4 px-3 py-1.5 border border-slate-300 rounded-md text-sm text-slate-600 hover:bg-slate-50 hover:text-brand transition"
+          >
+            イベントを編集
+          </a>
+        )}
+      </div>
       {ev.memo && (
         <p class="text-slate-500 text-sm mb-6">{escapeHtml(ev.memo)}</p>
       )}
@@ -213,6 +230,8 @@ export function EventPage(props: {
           このURLを共有すると、誰でも出欠を回答できます
         </p>
       </div>
+
+      <script dangerouslySetInnerHTML={{ __html: recentEventsScript }} />
     </Layout>
   );
 }
@@ -264,3 +283,43 @@ function getOrigin(url: string): string {
   const m = url.match(/^(https?:\/\/[^/]+)/);
   return m ? m[1] : url;
 }
+
+// Save viewed events to LocalStorage (max 5, most recent first)
+const recentEventsScript = `
+(function () {
+  try {
+    var STORAGE_KEY = "sorou_recent_events";
+    var MAX_ITEMS = 5;
+
+    // Extract event info from the page
+    var titleEl = document.querySelector("h1");
+    var name = titleEl ? titleEl.textContent.trim() : "";
+    var path = window.location.pathname; // /e/<ulid>
+    var id = path.split("/e/")[1] || "";
+    if (!id) return;
+
+    var stored = localStorage.getItem(STORAGE_KEY);
+    var events = stored ? JSON.parse(stored) : [];
+
+    // Remove existing entry for this event (so we can re-insert at top)
+    events = events.filter(function (e) { return e.id !== id; });
+
+    // Prepend
+    events.unshift({
+      id: id,
+      name: name,
+      url: path,
+      viewedAt: new Date().toISOString()
+    });
+
+    // Trim to MAX_ITEMS
+    if (events.length > MAX_ITEMS) {
+      events = events.slice(0, MAX_ITEMS);
+    }
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(events));
+  } catch (_) {
+    // LocalStorage unavailable — silently ignore
+  }
+})();
+`;

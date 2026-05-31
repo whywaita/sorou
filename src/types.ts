@@ -2,9 +2,16 @@ export interface Event {
   id: string;
   name: string;
   memo: string;
+  creatorTokenHash: string;
   candidates: Candidate[];
   responses: Response[];
   createdAt: string;
+}
+
+/** Context passed to views when the current browser is the event creator. */
+export interface CreatorContext {
+  isCreator: boolean;
+  editUrl?: string;
 }
 
 export interface Candidate {

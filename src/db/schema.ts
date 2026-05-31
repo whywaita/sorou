@@ -5,6 +5,7 @@ export const events = sqliteTable("events", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   memo: text("memo").notNull().default(""),
+  creatorTokenHash: text("creator_token_hash").notNull().default(""),
   createdAt: text("created_at")
     .notNull()
     .default(sql`(datetime('now'))`),

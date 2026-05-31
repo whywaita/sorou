@@ -13,6 +13,20 @@ import { AdminLoginPage, AdminEventList } from "../views/admin";
 
 const admin = new Hono<{ Bindings: { DB: D1Database } }>();
 
+function getDomain(c: {
+  req: { header: (name: string) => string | undefined };
+}): string {
+  const host = c.req.header("host") || "localhost:8787";
+  const proto = host.startsWith("localhost") ? "http" : "https";
+  return `${proto}://${host}`;
+}
+
+function currentUrl(c: {
+  req: { header: (name: string) => string | undefined; path: string };
+}): string {
+  return `${getDomain(c)}${c.req.path}`;
+}
+
 // Middleware: check admin enabled
 admin.use("/admin/*", async (c, next) => {
   if (!isAdminEnabled()) {
@@ -24,7 +38,7 @@ admin.use("/admin/*", async (c, next) => {
 // GET /admin
 admin.get("/admin", async (c) => {
   if (!(await isAdmin(c))) {
-    return c.html(<AdminLoginPage />);
+    return c.html(<AdminLoginPage currentUrl={currentUrl(c)} />);
   }
 
   const db = createDB(c.env.DB);
@@ -72,7 +86,13 @@ admin.get("/admin", async (c) => {
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
   );
 
-  return c.html(<AdminEventList events={list} query={query || undefined} />);
+  return c.html(
+    <AdminEventList
+      currentUrl={currentUrl(c)}
+      events={list}
+      query={query || undefined}
+    />,
+  );
 });
 
 // POST /admin/login
@@ -81,7 +101,12 @@ admin.post("/admin/login", async (c) => {
   const password = (body.password as string)?.trim() ?? "";
 
   if (!password || !(await verifyPassword(password))) {
-    return c.html(<AdminLoginPage error="パスワードが違います" />);
+    return c.html(
+      <AdminLoginPage
+        currentUrl={currentUrl(c)}
+        error="パスワードが違います"
+      />,
+    );
   }
 
   setSessionCookie(c);

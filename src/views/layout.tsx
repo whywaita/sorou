@@ -5,21 +5,32 @@ interface LayoutProps {
   description?: string;
   ogImage?: string;
   ogType?: "website" | "article";
-  canonicalPath?: string;
+  /** Full URL of the current page (derived from request host header). */
+  currentUrl: string;
   children: unknown;
 }
 
 const SITE_NAME = "sorou";
-const BASE_URL = "https://sorou.qh.nu";
-const DEFAULT_DESCRIPTION = "認証不要のシンプルな日程調整ツール。イベントを作成してURLを共有するだけで、参加者の出欠を収集・可視化できます。";
-const DEFAULT_OG_IMAGE = `${BASE_URL}/ogp.svg`;
+const DEFAULT_DESCRIPTION =
+  "認証不要のシンプルな日程調整ツール。イベントを作成してURLを共有するだけで、参加者の出欠を収集・可視化できます。";
+
+function origin(url: string): string {
+  // Extract scheme://host from a full URL
+  const m = url.match(/^(https?:\/\/[^/]+)/);
+  return m ? m[1] : url;
+}
 
 export const Layout = (props: LayoutProps) => {
   const desc = props.description ?? DEFAULT_DESCRIPTION;
-  const ogImage = props.ogImage ?? DEFAULT_OG_IMAGE;
   const ogType = props.ogType ?? "website";
-  const canonical = props.canonicalPath ? `${BASE_URL}${props.canonicalPath}` : BASE_URL;
   const titleFull = `${props.title} — ${SITE_NAME}`;
+
+  // If ogImage is a relative path, prepend the origin
+  const ogImage = props.ogImage
+    ? props.ogImage.startsWith("/")
+      ? `${origin(props.currentUrl)}${props.ogImage}`
+      : props.ogImage
+    : `${origin(props.currentUrl)}/ogp.svg`;
 
   return html`<!DOCTYPE html>
     <html lang="ja">
@@ -37,7 +48,7 @@ export const Layout = (props: LayoutProps) => {
         <meta property="og:title" content="${titleFull}" />
         <meta property="og:description" content="${desc}" />
         <meta property="og:type" content="${ogType}" />
-        <meta property="og:url" content="${canonical}" />
+        <meta property="og:url" content="${props.currentUrl}" />
         <meta property="og:image" content="${ogImage}" />
         <meta property="og:site_name" content="${SITE_NAME}" />
         <meta property="og:locale" content="ja_JP" />
@@ -49,7 +60,7 @@ export const Layout = (props: LayoutProps) => {
         <meta name="twitter:image" content="${ogImage}" />
 
         <!-- Canonical URL -->
-        <link rel="canonical" href="${canonical}" />
+        <link rel="canonical" href="${props.currentUrl}" />
 
         <script src="https://cdn.tailwindcss.com"></script>
         <script>

@@ -4,6 +4,7 @@ import { Layout } from "./layout";
 export function EventPage(props: {
   event: Event;
   shareUrl: string;
+  currentUrl: string;
   errors?: Record<string, string[]>;
   edit?: { name: string; comment: string; statuses: Record<number, string> };
 }) {
@@ -16,7 +17,8 @@ export function EventPage(props: {
       title={ev.name}
       description={ev.memo || `${ev.name} の日程調整 — 出欠を回答してください`}
       ogType="article"
-      canonicalPath={`/e/${ev.id}`}
+      ogImage={`${getOrigin(shareUrl)}/e/${ev.id}/ogp.svg`}
+      currentUrl={props.currentUrl}
     >
       <h1 class="text-2xl font-bold mb-1">{escapeHtml(ev.name)}</h1>
       {ev.memo && (
@@ -256,4 +258,9 @@ function escapeHtml(s: string): string {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+function getOrigin(url: string): string {
+  const m = url.match(/^(https?:\/\/[^/]+)/);
+  return m ? m[1] : url;
 }

@@ -1,6 +1,7 @@
 import { Layout } from "./layout";
 
 export function TopPage(props: {
+  currentUrl: string;
   errors?: Record<string, string[]>;
   values?: { name?: string; memo?: string; dates?: string };
 }) {
@@ -11,6 +12,7 @@ export function TopPage(props: {
     <Layout
       title="新しいイベントを作成"
       description="sorou で新しいイベントを作成し、参加者の出欠を収集しましょう。認証不要ですぐに使えます。"
+      currentUrl={props.currentUrl}
     >
       <h1 class="text-2xl font-bold mb-6">新しいイベントを作成</h1>
       <form

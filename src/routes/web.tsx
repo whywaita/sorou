@@ -19,9 +19,15 @@ function getDomain(c: {
   return `${proto}://${host}`;
 }
 
+function currentUrl(c: {
+  req: { header: (name: string) => string | undefined; path: string };
+}): string {
+  return `${getDomain(c)}${c.req.path}`;
+}
+
 // GET /
 web.get("/", (c) => {
-  return c.html(<TopPage />);
+  return c.html(<TopPage currentUrl={currentUrl(c)} />);
 });
 
 // POST /events
@@ -37,6 +43,7 @@ web.post("/events", async (c) => {
     }
     return c.html(
       <TopPage
+        currentUrl={currentUrl(c)}
         errors={fieldErrors}
         values={{
           name: body.name as string,
@@ -73,7 +80,7 @@ web.get("/e/:id", async (c) => {
   const db = createDB(c.env.DB);
 
   const event = await loadEvent(db, id);
-  if (!event) return c.html(<NotFoundPage />, 404);
+  if (!event) return c.html(<NotFoundPage currentUrl={currentUrl(c)} />, 404);
 
   const editParam = c.req.query("edit");
   const editData = editParam ? getEditData(event, editParam) : undefined;
@@ -82,9 +89,22 @@ web.get("/e/:id", async (c) => {
     <EventPage
       event={event}
       shareUrl={`${getDomain(c)}/e/${id}`}
+      currentUrl={currentUrl(c)}
       edit={editData}
     />,
   );
+});
+
+// GET /e/:id/ogp.svg — dynamic OGP image per event
+web.get("/e/:id/ogp.svg", async (c) => {
+  const id = c.req.param("id");
+  const db = createDB(c.env.DB);
+
+  const event = await loadEvent(db, id);
+  if (!event) return c.notFound();
+
+  const svg = ogpSvg(event.name);
+  return c.body(svg, 200, { "Content-Type": "image/svg+xml; charset=utf-8" });
 });
 
 // POST /e/:id/responses
@@ -94,7 +114,7 @@ web.post("/e/:id/responses", async (c) => {
   const db = createDB(c.env.DB);
 
   const event = await loadEvent(db, eventId);
-  if (!event) return c.html(<NotFoundPage />, 404);
+  if (!event) return c.html(<NotFoundPage currentUrl={currentUrl(c)} />, 404);
 
   const participantName = (body.participant_name as string)?.trim() ?? "";
   const comment = (body.comment as string)?.trim() ?? "";
@@ -125,6 +145,7 @@ web.post("/e/:id/responses", async (c) => {
       <EventPage
         event={event}
         shareUrl={`${getDomain(c)}/e/${eventId}`}
+        currentUrl={currentUrl(c)}
         errors={errors}
         edit={{
           name: participantName,
@@ -248,6 +269,43 @@ function getEditData(
     statuses[s.candidateId] = s.status;
   }
   return { name: resp.participantName, comment: resp.comment, statuses };
+}
+
+// Dynamic OGP SVG generator
+function ogpSvg(eventName: string): string {
+  const escapedName = escapeXml(eventName);
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <rect width="1200" height="630" fill="#ffffff"/>
+  <defs>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#f0fdf4" stroke-width="1"/>
+    </pattern>
+  </defs>
+  <rect width="1200" height="630" fill="url(#grid)"/>
+  <rect x="0" y="0" width="1200" height="8" fill="#059669"/>
+  <rect x="80" y="160" width="1040" height="310" rx="16" fill="#f0fdf4" stroke="#d1fae5" stroke-width="2"/>
+  <g transform="translate(160, 260)">
+    <rect x="0" y="8" width="80" height="72" rx="6" fill="none" stroke="#059669" stroke-width="4"/>
+    <line x1="0" y1="30" x2="80" y2="30" stroke="#059669" stroke-width="4"/>
+    <line x1="20" y1="0" x2="20" y2="14" stroke="#059669" stroke-width="4" stroke-linecap="round"/>
+    <line x1="60" y1="0" x2="60" y2="14" stroke="#059669" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="40" cy="52" r="16" fill="#059669"/>
+    <path d="M32 52 L38 58 L48 46" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="280" y="290" font-family="system-ui, -apple-system, sans-serif" font-size="64" font-weight="800" fill="#059669">sorou</text>
+  <text x="280" y="350" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="600" fill="#334155">${escapedName}</text>
+  <text x="280" y="410" font-family="system-ui, -apple-system, sans-serif" font-size="22" font-weight="400" fill="#64748b">シンプルな日程調整ツール</text>
+</svg>`;
+}
+
+function escapeXml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
 }
 
 export default web;

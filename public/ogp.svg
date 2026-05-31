@@ -36,7 +36,4 @@
   
   <!-- Subtitle -->
   <text x="280" y="340" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="400" fill="#64748b">シンプルな日程調整ツール</text>
-  
-  <!-- Tagline -->
-  <text x="280" y="400" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="400" fill="#94a3b8">認証不要 · エッジネイティブ · オープンソース</text>
 </svg>

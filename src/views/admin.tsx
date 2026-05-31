@@ -1,8 +1,8 @@
 import { Layout } from "./layout";
 
-export function AdminLoginPage(props: { error?: string }) {
+export function AdminLoginPage(props: { currentUrl: string; error?: string }) {
   return (
-    <Layout title="管理画面" description="sorou 管理画面 — イベントの管理・削除">
+    <Layout title="管理画面" description="sorou 管理画面 — イベントの管理・削除" currentUrl={props.currentUrl}>
       <h1 class="text-2xl font-bold mb-6">管理画面</h1>
       <form
         method="post"
@@ -42,6 +42,7 @@ export function AdminLoginPage(props: { error?: string }) {
 }
 
 export function AdminEventList(props: {
+  currentUrl: string;
   events: {
     id: string;
     name: string;
@@ -53,7 +54,7 @@ export function AdminEventList(props: {
   query?: string;
 }) {
   return (
-    <Layout title="管理画面" description="sorou 管理画面 — イベントの管理・削除">
+    <Layout title="管理画面" description="sorou 管理画面 — イベントの管理・削除" currentUrl={props.currentUrl}>
       <h1 class="text-2xl font-bold mb-6">管理画面</h1>
 
       {/* Search */}

@@ -11,7 +11,7 @@ export function TopPage(props: {
   return (
     <Layout
       title="新しいイベントを作成"
-      description="sorou で新しいイベントを作成し、参加者の出欠を収集しましょう。認証不要ですぐに使えます。"
+      description="sorou - シンプルな日程調整ツール"
       currentUrl={props.currentUrl}
     >
       <h1 class="text-2xl font-bold mb-6">新しいイベントを作成</h1>

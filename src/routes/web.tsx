@@ -109,7 +109,7 @@ web.get("/e/:id/ogp.png", async (c) => {
   const event = await loadEvent(db, id);
   if (!event) return c.notFound();
 
-  return renderOgpImage(event.name);
+  return renderOgpImage({ title: event.name, description: event.memo });
 });
 
 // POST /e/:id/responses

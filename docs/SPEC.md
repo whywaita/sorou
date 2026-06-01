@@ -580,9 +580,11 @@ DELETE FROM events WHERE id = ?
 sorou/
 ├── .github/
 │   └── workflows/
-│       ├── test.yaml                # CI: Vitest (unit + integration)
-│       ├── lint.yaml                # CI: ESLint + Prettier + actionlint
-│       └── deploy.yaml              # CD: wrangler deploy
+│   │   ├── test.yaml                # CI: Vitest (unit + integration)
+│   │   ├── lint.yaml                # CI: ESLint + Prettier + actionlint
+│   │   ├── deploy.yaml              # CD: wrangler deploy (main branch)
+│   │   ├── pr-preview.yaml          # CD: PR preview deploy
+│   │   └── pr-preview-cleanup.yaml  # CD: PR preview cleanup
 ├── docs/
 │   ├── DESIGN.md                    # 本ドキュメント
 │   └── SPEC.md                      # 要件定義（本ファイル）
@@ -612,6 +614,7 @@ sorou/
 ├── static/
 │   └── style.css                    # Tailwind CSS 出力
 ├── wrangler.toml
+├── wrangler.pr.toml                 # PR preview 用テンプレート（worker名/D1 ID はプレースホルダ）
 ├── drizzle.config.ts
 ├── tailwind.config.js
 ├── tsconfig.json
@@ -687,6 +690,63 @@ jobs:
       - uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+```
+
+```yaml
+# .github/workflows/pr-preview.yaml
+name: PR Preview
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+jobs:
+  deploy-preview:
+    runs-on: ubuntu-latest
+    concurrency: preview-${{ github.event.pull_request.number }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: npm ci
+      - run: npm test
+      - run: npx tsc --noEmit
+      - name: Create D1 database
+        run: |
+          wrangler d1 create "sorou-pr-${{ github.event.pull_request.number }}-db"
+      - name: Apply D1 migrations
+        run: |
+          for f in ./drizzle/migrations/*.sql; do
+            wrangler d1 execute "sorou-pr-${{ github.event.pull_request.number }}-db" --remote --file="$f"
+          done
+      - name: Generate wrangler config & deploy
+        run: |
+          sed -e "s/__WORKER_NAME__/sorou-pr-${{ github.event.pull_request.number }}/g" \
+              -e "s/__D1_NAME__/sorou-pr-${{ github.event.pull_request.number }}-db/g" \
+              wrangler.pr.toml > wrangler.pr.tmp.toml
+          wrangler deploy --config wrangler.pr.tmp.toml
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+```
+
+```yaml
+# .github/workflows/pr-preview-cleanup.yaml
+name: PR Preview Cleanup
+on:
+  pull_request:
+    types: [closed]
+jobs:
+  cleanup-preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: npm ci
+      - run: wrangler delete "sorou-pr-${{ github.event.pull_request.number }}" --force
+      - run: wrangler d1 delete "sorou-pr-${{ github.event.pull_request.number }}-db" --skip-confirmation
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 ```
 
 ### 8.2 監査ツール

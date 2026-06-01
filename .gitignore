@@ -3,5 +3,7 @@ dist
 .wrangler
 *.log
 .env
+wrangler.pr-*.toml
+.hermes/
 
 cli/cli

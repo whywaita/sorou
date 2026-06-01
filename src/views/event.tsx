@@ -190,7 +190,7 @@ export function EventPage(props: {
                         checked={checked}
                         class="accent-brand"
                       />
-                      {s === "〇" ? "参加" : s === "△" ? "微妙" : "不参加"}
+                      {s}
                     </label>
                   );
                 })}

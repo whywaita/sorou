@@ -280,7 +280,9 @@ web.post("/e/:id/edit", async (c) => {
     .set({ name: result.data.name, memo: result.data.memo })
     .where(eq(events.id, id));
 
-  // Replace candidates: delete old → insert new
+  // Replace candidates: delete old responses + candidates → insert new
+  const { responses: respTable } = await import("../db/schema");
+  await db.delete(respTable).where(eq(respTable.eventId, id));
   await db.delete(candidates).where(eq(candidates.eventId, id));
   for (let i = 0; i < result.data.dates.length; i++) {
     await db.insert(candidates).values({

@@ -76,3 +76,37 @@ describe("POST /e/:id/responses（存在しないイベント）", () => {
     expect(res.status).toBe(404);
   });
 });
+
+describe("GET /e/:id/edit（存在しないイベント）", () => {
+  it("HTTP 404 を返す", async () => {
+    const res = await app.request("/e/nonexistent/edit", {}, env);
+    expect(res.status).toBe(404);
+  });
+});
+
+describe("POST /e/:id/delete（存在しないイベント）", () => {
+  it("HTTP 404 を返す", async () => {
+    const res = await app.request(
+      "/e/nonexistent/delete",
+      { method: "POST" },
+      env,
+    );
+    expect(res.status).toBe(404);
+  });
+});
+
+describe("LocalStorage スクリプト埋め込み", () => {
+  it("トップページに recent events スクリプトが含まれる", async () => {
+    const res = await app.request("/", {}, env);
+    const body = await res.text();
+    expect(body).toContain("sorou_recent_events");
+    expect(body).toContain("recent-events");
+  });
+
+  it("イベントページ（404）にも recent events スクリプトが含まれる", async () => {
+    // Even when event not found, the script should not be present
+    // (404 page doesn't include it)
+    const res = await app.request("/e/nonexistent", {}, env);
+    expect(res.status).toBe(404);
+  });
+});

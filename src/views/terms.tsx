@@ -29,9 +29,7 @@ export function TermsPage(props: { currentUrl: string }) {
           </p>
           <ul class="list-disc list-inside space-y-1 ml-2">
             <li>法令または公序良俗に違反する行為</li>
-            <li>
-              他人のプライバシーを侵害する行為（個人情報の無断投稿等）
-            </li>
+            <li>他人のプライバシーを侵害する行為（個人情報の無断投稿等）</li>
             <li>本サービスの運営を妨害する行為</li>
             <li>
               過度なリクエストを送信するなど、サーバーに過大な負荷をかける行為

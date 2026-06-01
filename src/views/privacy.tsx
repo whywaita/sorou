@@ -30,9 +30,7 @@ export function PrivacyPage(props: { currentUrl: string }) {
 
         <section class="mb-8">
           <h2 class="text-lg font-bold mb-3">2. 情報の利用目的</h2>
-          <p class="mb-2">
-            収集した情報は、以下の目的にのみ利用されます。
-          </p>
+          <p class="mb-2">収集した情報は、以下の目的にのみ利用されます。</p>
           <ul class="list-disc list-inside space-y-1 ml-2">
             <li>日程調整イベントの作成・共有</li>
             <li>参加者の出欠状況の集計・表示</li>
@@ -46,7 +44,8 @@ export function PrivacyPage(props: { currentUrl: string }) {
         <section class="mb-8">
           <h2 class="text-lg font-bold mb-3">3. 情報の保存</h2>
           <p class="mb-2">
-            収集した情報は、Cloudflare D1（SQLite互換のエッジデータベース）に保存されます。データはCloudflareのインフラストラクチャ上で保管され、Cloudflareのセキュリティ対策の下で保護されます。
+            収集した情報は、Cloudflare
+            D1（SQLite互換のエッジデータベース）に保存されます。データはCloudflareのインフラストラクチャ上で保管され、Cloudflareのセキュリティ対策の下で保護されます。
           </p>
           <p class="mt-2">
             イベント作成者は、管理画面から任意のタイミングでイベントおよび関連するすべての回答データを削除できます。
@@ -61,9 +60,7 @@ export function PrivacyPage(props: { currentUrl: string }) {
         </section>
 
         <section class="mb-8">
-          <h2 class="text-lg font-bold mb-3">
-            5. アクセス解析・トラッキング
-          </h2>
+          <h2 class="text-lg font-bold mb-3">5. アクセス解析・トラッキング</h2>
           <p>
             本サービスは、Google
             Analytics等のアクセス解析ツールや、トラッキングCookieを使用していません。
@@ -72,9 +69,7 @@ export function PrivacyPage(props: { currentUrl: string }) {
 
         <section class="mb-8">
           <h2 class="text-lg font-bold mb-3">6. 外部リンク</h2>
-          <p>
-            本サービスには外部サイトへのリンクは含まれません。
-          </p>
+          <p>本サービスには外部サイトへのリンクは含まれません。</p>
         </section>
 
         <section class="mb-8">

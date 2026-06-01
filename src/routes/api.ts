@@ -218,6 +218,7 @@ async function loadEvent(
     id: ev.id,
     name: ev.name,
     memo: ev.memo,
+    creatorTokenHash: ev.creatorTokenHash,
     candidates: candRows.map((c) => ({
       id: c.id,
       date: c.date,

@@ -1,0 +1,1 @@
+ALTER TABLE `events` ADD `creator_token_hash` text DEFAULT '' NOT NULL;

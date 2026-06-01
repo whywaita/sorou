@@ -120,7 +120,15 @@ export function TopPage(props: {
           イベントを作成
         </button>
       </form>
+
+      {/* Recent Events */}
+      <div id="recent-events" class="mt-10 hidden">
+        <h2 class="text-lg font-bold mb-4">直近のイベント</h2>
+        <div id="recent-events-list" class="space-y-3" />
+      </div>
+
       <script dangerouslySetInnerHTML={{ __html: calendarScript }} />
+      <script dangerouslySetInnerHTML={{ __html: recentEventsScript }} />
     </Layout>
   );
 }
@@ -238,5 +246,46 @@ const calendarScript = `
   }
 
   renderCalendar();
+})();
+`;
+
+// Render recent events from LocalStorage
+const recentEventsScript = `
+(function () {
+  try {
+    var STORAGE_KEY = "sorou_recent_events";
+    var stored = localStorage.getItem(STORAGE_KEY);
+    if (!stored) return;
+
+    var events = JSON.parse(stored);
+    if (!events.length) return;
+
+    var container = document.getElementById("recent-events");
+    var list = document.getElementById("recent-events-list");
+    if (!container || !list) return;
+
+    container.classList.remove("hidden");
+
+    events.forEach(function (ev) {
+      var card = document.createElement("a");
+      card.href = ev.url;
+      card.className =
+        "block bg-white rounded-lg shadow-sm border border-slate-200 p-4 hover:border-brand/50 hover:shadow transition";
+
+      var nameEl = document.createElement("div");
+      nameEl.className = "font-medium text-slate-800";
+      nameEl.textContent = ev.name || "(無題のイベント)";
+
+      var idEl = document.createElement("div");
+      idEl.className = "text-xs text-slate-400 mt-1 font-mono";
+      idEl.textContent = ev.id;
+
+      card.appendChild(nameEl);
+      card.appendChild(idEl);
+      list.appendChild(card);
+    });
+  } catch (_) {
+    // LocalStorage unavailable — silently ignore
+  }
 })();
 `;

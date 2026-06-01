@@ -113,7 +113,9 @@ export function AdminEventList(props: {
                 <th class="px-4 py-3 text-center font-medium text-slate-600">
                   回答
                 </th>
-                <th class="px-4 py-3 text-center font-medium text-slate-600" />
+                <th class="px-4 py-3 text-center font-medium text-slate-600">
+                  操作
+                </th>
               </tr>
             </thead>
             <tbody>

@@ -1,0 +1,74 @@
+name: PR Preview Cleanup
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  pull-requests: write
+
+env:
+  PR_NUMBER: ${{ github.event.pull_request.number }}
+  WORKER_NAME: sorou-pr-${{ github.event.pull_request.number }}
+  DB_NAME: sorou-pr-${{ github.event.pull_request.number }}-db
+
+jobs:
+  cleanup-preview:
+    runs-on: ubuntu-latest
+    # フォークからの PR はデプロイされていないのでスキップ
+    if: github.event.pull_request.head.repo.fork == false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - run: npm ci
+
+      # wrangler を PATH に追加
+      - name: Add node_modules/.bin to PATH
+        run: echo "$PWD/node_modules/.bin" >> "$GITHUB_PATH"
+
+      # Worker 削除
+      - name: Delete Cloudflare Worker
+        continue-on-error: true
+        run: |
+          echo "🗑 Deleting worker: ${WORKER_NAME}"
+          wrangler delete "$WORKER_NAME" --force 2>&1 || {
+            echo "⚠ Worker deletion failed or worker did not exist — continuing"
+          }
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      # D1 データベース削除
+      - name: Delete D1 database
+        continue-on-error: true
+        run: |
+          echo "🗑 Deleting D1 database: ${DB_NAME}"
+          echo 'y' | wrangler d1 delete "$DB_NAME" --skip-confirmation 2>&1 || {
+            echo "⚠ D1 deletion failed or database did not exist — continuing"
+          }
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      # クリーンアップ完了をコメント
+      - name: Comment cleanup status on PR
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = `🧹 プレビュー環境を削除しました
+
+            - Worker: \`${process.env.WORKER_NAME}\`
+            - D1: \`${process.env.DB_NAME}\``;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });

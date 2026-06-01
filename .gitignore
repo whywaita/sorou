@@ -3,4 +3,6 @@ dist
 .wrangler
 *.log
 .env
+wrangler.pr-*.toml
+.hermes/
 

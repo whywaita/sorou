@@ -4,6 +4,10 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
 
+# PR コメントに書き込むために必要な権限
+permissions:
+  pull-requests: write
+
 # 同じ PR に対する連続 push は直列化（古いジョブはキャンセル）
 concurrency:
   group: preview-${{ github.event.pull_request.number }}

@@ -45,22 +45,26 @@ jobs:
       - name: Run tests
         run: npm test
 
-      # D1 データベースの作成 or 取得
-      - name: Create or get D1 database
+      # D1 データベースの再作成（毎回クリーンなDBを用意）
+      - name: Recreate D1 database
         id: d1
         run: |
           set -e
-          # 既存 DB の確認（wrangler d1 info のテキスト出力から UUID を抽出）
-          if DB_INFO=$(wrangler d1 info "$DB_NAME" 2>&1); then
-            echo "📦 D1 database '${DB_NAME}' already exists, reusing"
-            DB_ID=$(echo "$DB_INFO" | grep -oP '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' | head -1)
-          else
-            echo "🆕 Creating D1 database '${DB_NAME}'"
-            CREATE_OUT=$(echo 'y' | wrangler d1 create "$DB_NAME" 2>&1)
-            echo "$CREATE_OUT"
-            DB_ID=$(echo "$CREATE_OUT" | grep -oP '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' | head -1)
-            echo "   database_id = ${DB_ID}"
+          # 既存 DB があれば削除
+          if wrangler d1 info "$DB_NAME" > /dev/null 2>&1; then
+            echo "🗑 Deleting existing D1 database '${DB_NAME}'"
+            echo 'y' | wrangler d1 delete "$DB_NAME" --skip-confirmation 2>&1 || true
           fi
+          # 新規作成
+          echo "🆕 Creating D1 database '${DB_NAME}'"
+          CREATE_OUT=$(echo 'y' | wrangler d1 create "$DB_NAME" 2>&1)
+          echo "$CREATE_OUT"
+          DB_ID=$(echo "$CREATE_OUT" | grep -oP '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' | head -1)
+          if [ -z "$DB_ID" ]; then
+            echo "❌ Failed to extract database ID from output"
+            exit 1
+          fi
+          echo "   database_id = ${DB_ID}"
           echo "db_id=${DB_ID}" >> "$GITHUB_OUTPUT"
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

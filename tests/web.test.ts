@@ -110,3 +110,26 @@ describe("LocalStorage スクリプト埋め込み", () => {
     expect(res.status).toBe(404);
   });
 });
+
+// ─── Admin routes ──────────────────────────────────────────────────
+
+describe("管理画面（ADMIN_PASSWORD 未設定時は無効化 F-27）", () => {
+  it("GET /admin は 404 を返す", async () => {
+    const res = await app.request("/admin", {}, env);
+    expect(res.status).toBe(404);
+  });
+
+  it("GET /admin/events/:id/edit は 404 を返す", async () => {
+    const res = await app.request("/admin/events/some-id/edit", {}, env);
+    expect(res.status).toBe(404);
+  });
+
+  it("POST /admin/login は 404 を返す", async () => {
+    const res = await app.request(
+      "/admin/login",
+      { method: "POST", body: new URLSearchParams({ password: "test" }) },
+      env,
+    );
+    expect(res.status).toBe(404);
+  });
+});

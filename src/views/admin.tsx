@@ -134,18 +134,26 @@ export function AdminEventList(props: {
                     {ev.responseCount}/{ev.candidateCount}
                   </td>
                   <td class="px-4 py-3 text-center">
-                    <form
-                      method="post"
-                      action={`/admin/events/${ev.id}/delete`}
-                      onsubmit="return confirm('このイベントを削除しますか？')"
-                    >
-                      <button
-                        type="submit"
-                        class="text-red-500 hover:text-red-700 text-xs font-medium hover:underline"
+                    <div class="flex items-center justify-center gap-3">
+                      <a
+                        href={`/admin/events/${ev.id}/edit`}
+                        class="text-brand hover:underline text-xs font-medium"
                       >
-                        削除
-                      </button>
-                    </form>
+                        編集
+                      </a>
+                      <form
+                        method="post"
+                        action={`/admin/events/${ev.id}/delete`}
+                        onsubmit="return confirm('このイベントを削除しますか？')"
+                      >
+                        <button
+                          type="submit"
+                          class="text-red-500 hover:text-red-700 text-xs font-medium hover:underline"
+                        >
+                          削除
+                        </button>
+                      </form>
+                    </div>
                   </td>
                 </tr>
               ))}

@@ -7,8 +7,18 @@ export function EditEventPage(props: {
   shareUrl: string;
   errors?: Record<string, string[]>;
   values?: { name?: string; memo?: string; dates?: string };
+  /** Admin mode: form POST targets the admin routes instead of the creator routes. */
+  isAdmin?: boolean;
 }) {
-  const { event: ev, errors: e = {}, values: v = {} } = props;
+  const { event: ev, errors: e = {}, values: v = {}, isAdmin = false } = props;
+  const editAction = isAdmin
+    ? `/admin/events/${ev.id}/edit`
+    : `/e/${ev.id}/edit`;
+  const deleteAction = isAdmin
+    ? `/admin/events/${ev.id}/delete`
+    : `/e/${ev.id}/delete`;
+  const backUrl = isAdmin ? "/admin" : `/e/${ev.id}`;
+  const backLabel = isAdmin ? "← 管理画面に戻る" : "← イベントページに戻る";
   // Build default dates string from current candidates
   const defaultDates = ev.candidates.map((c) => c.date).join("\n");
 
@@ -21,16 +31,16 @@ export function EditEventPage(props: {
       <div class="flex items-center justify-between mb-6">
         <h1 class="text-2xl font-bold">イベントを編集</h1>
         <a
-          href={`/e/${ev.id}`}
+          href={backUrl}
           class="text-sm text-slate-500 hover:text-brand underline"
         >
-          ← イベントページに戻る
+          {backLabel}
         </a>
       </div>
 
       <form
         method="post"
-        action={`/e/${ev.id}/edit`}
+        action={editAction}
         class="bg-white rounded-lg shadow-sm border border-slate-200 p-6 space-y-5"
       >
         {/* Name */}
@@ -113,7 +123,7 @@ export function EditEventPage(props: {
         </p>
         <form
           method="post"
-          action={`/e/${ev.id}/delete`}
+          action={deleteAction}
           onsubmit="return confirm('本当にこのイベントを削除しますか？この操作は取り消せません。')"
         >
           <button

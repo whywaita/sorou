@@ -29,6 +29,10 @@ jobs:
 
       - run: npm ci
 
+      # wrangler を PATH に追加（devDependency としてインストールされるため）
+      - name: Add node_modules/.bin to PATH
+        run: echo "$PWD/node_modules/.bin" >> "$GITHUB_PATH"
+
       # 型チェック
       - name: Type check
         run: npx tsc --noEmit

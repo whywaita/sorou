@@ -24,6 +24,10 @@ jobs:
 
       - run: npm ci
 
+      # wrangler を PATH に追加
+      - name: Add node_modules/.bin to PATH
+        run: echo "$PWD/node_modules/.bin" >> "$GITHUB_PATH"
+
       # Worker 削除
       - name: Delete Cloudflare Worker
         continue-on-error: true

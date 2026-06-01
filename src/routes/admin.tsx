@@ -9,7 +9,11 @@ import {
   verifyPassword,
   setSessionCookie,
 } from "../lib/session";
+import { createEventSchema } from "../lib/validation";
 import { AdminLoginPage, AdminEventList } from "../views/admin";
+import { EditEventPage } from "../views/edit";
+import { NotFoundPage } from "../views/error";
+import { loadEvent } from "./web";
 
 const admin = new Hono<{ Bindings: { DB: D1Database } }>();
 
@@ -134,6 +138,85 @@ admin.post("/admin/events/:id/delete", async (c) => {
 
   // Delete (CASCADE handles related rows)
   await db.delete(events).where(eq(events.id, eventId));
+
+  return c.redirect("/admin");
+});
+
+// GET /admin/events/:id/edit — admin event edit form
+admin.get("/admin/events/:id/edit", async (c) => {
+  if (!(await isAdmin(c))) {
+    return c.redirect("/admin");
+  }
+
+  const eventId = c.req.param("id");
+  const db = createDB(c.env.DB);
+  const event = await loadEvent(db, eventId);
+  if (!event) return c.html(<NotFoundPage currentUrl={currentUrl(c)} />, 404);
+
+  return c.html(
+    <EditEventPage
+      event={event}
+      currentUrl={currentUrl(c)}
+      shareUrl={`${getDomain(c)}/e/${eventId}`}
+      isAdmin
+    />,
+  );
+});
+
+// POST /admin/events/:id/edit — admin update event
+admin.post("/admin/events/:id/edit", async (c) => {
+  if (!(await isAdmin(c))) {
+    return c.redirect("/admin");
+  }
+
+  const eventId = c.req.param("id");
+  const body = await c.req.parseBody();
+  const db = createDB(c.env.DB);
+
+  const event = await loadEvent(db, eventId);
+  if (!event) return c.html(<NotFoundPage currentUrl={currentUrl(c)} />, 404);
+
+  // Validate
+  const result = createEventSchema.safeParse(body);
+  if (!result.success) {
+    const fieldErrors: Record<string, string[]> = {};
+    for (const issue of result.error.issues) {
+      const key = issue.path[0] as string;
+      if (!fieldErrors[key]) fieldErrors[key] = [];
+      fieldErrors[key].push(issue.message);
+    }
+    return c.html(
+      <EditEventPage
+        event={event}
+        currentUrl={currentUrl(c)}
+        shareUrl={`${getDomain(c)}/e/${eventId}`}
+        errors={fieldErrors}
+        values={{
+          name: body.name as string,
+          memo: body.memo as string,
+          dates: body.dates as string,
+        }}
+        isAdmin
+      />,
+    );
+  }
+
+  // Update event name + memo
+  await db
+    .update(events)
+    .set({ name: result.data.name, memo: result.data.memo })
+    .where(eq(events.id, eventId));
+
+  // Replace candidates: delete old responses + candidates → insert new
+  await db.delete(responses).where(eq(responses.eventId, eventId));
+  await db.delete(candidates).where(eq(candidates.eventId, eventId));
+  for (let i = 0; i < result.data.dates.length; i++) {
+    await db.insert(candidates).values({
+      eventId,
+      date: result.data.dates[i],
+      sortOrder: i,
+    });
+  }
 
   return c.redirect("/admin");
 });

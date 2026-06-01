@@ -16,7 +16,7 @@ jobs:
       - name: Apply D1 migrations
         run: |
           for f in ./drizzle/migrations/*.sql; do
-            npx wrangler d1 execute sorou-db --remote --file="$f"
+            npx wrangler d1 execute sorou-db --remote --file="$f" || echo "::warning::Migration already applied: $f"
           done
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

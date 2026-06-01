@@ -46,13 +46,15 @@ jobs:
         id: d1
         run: |
           set -e
-          # 既存 DB の確認
-          if wrangler d1 info "$DB_NAME" --json > /dev/null 2>&1; then
+          # 既存 DB の確認（wrangler d1 info のテキスト出力から UUID を抽出）
+          if DB_INFO=$(wrangler d1 info "$DB_NAME" 2>&1); then
             echo "📦 D1 database '${DB_NAME}' already exists, reusing"
-            DB_ID=$(wrangler d1 info "$DB_NAME" --json | jq -r '.uuid')
+            DB_ID=$(echo "$DB_INFO" | grep -oP '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' | head -1)
           else
             echo "🆕 Creating D1 database '${DB_NAME}'"
-            DB_ID=$(echo 'y' | wrangler d1 create "$DB_NAME" --json | jq -r '.uuid')
+            CREATE_OUT=$(echo 'y' | wrangler d1 create "$DB_NAME" 2>&1)
+            echo "$CREATE_OUT"
+            DB_ID=$(echo "$CREATE_OUT" | grep -oP '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' | head -1)
             echo "   database_id = ${DB_ID}"
           fi
           echo "db_id=${DB_ID}" >> "$GITHUB_OUTPUT"

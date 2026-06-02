@@ -7,6 +7,8 @@ interface LayoutProps {
   ogType?: "website" | "article";
   /** Full URL of the current page (derived from request host header). */
   currentUrl: string;
+  /** If true, adds <meta name="robots" content="noindex"> to prevent search engines from indexing the page. */
+  noindex?: boolean;
   children: unknown;
 }
 
@@ -61,6 +63,10 @@ export const Layout = (props: LayoutProps) => {
 
         <!-- Canonical URL -->
         <link rel="canonical" href="${props.currentUrl}" />
+
+        ${props.noindex
+          ? html`<meta name="robots" content="noindex" />`
+          : ""}
 
         <script src="https://cdn.tailwindcss.com"></script>
         <script>

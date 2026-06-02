@@ -26,6 +26,7 @@ export function EventPage(props: {
       ogType="article"
       ogImage={`${getOrigin(shareUrl)}/e/${ev.id}/ogp.png`}
       currentUrl={props.currentUrl}
+      noindex
     >
       <div class="flex items-start justify-between mb-1">
         <h1 class="text-2xl font-bold">{escapeHtml(ev.name)}</h1>

@@ -4,7 +4,7 @@ on:
   pull_request:
     types: [closed]
 
-# 必要なし（PRコメントは行わず、Discord通知のみ）
+# No permissions needed (notifying via Discord, not PR comments)
 
 env:
   PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -14,7 +14,7 @@ env:
 jobs:
   cleanup-preview:
     runs-on: ubuntu-latest
-    # フォークからの PR はデプロイされていないのでスキップ
+    # Skip forked PRs (no deployments created)
     if: github.event.pull_request.head.repo.fork == false
 
     steps:
@@ -26,11 +26,11 @@ jobs:
 
       - run: npm ci
 
-      # wrangler を PATH に追加
+      # Add wrangler to PATH
       - name: Add node_modules/.bin to PATH
         run: echo "$PWD/node_modules/.bin" >> "$GITHUB_PATH"
 
-      # Worker 削除
+      # Delete Worker
       - name: Delete Cloudflare Worker
         continue-on-error: true
         run: |
@@ -42,7 +42,7 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
-      # D1 データベース削除
+      # Delete D1 database
       - name: Delete D1 database
         continue-on-error: true
         run: |
@@ -54,7 +54,7 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
-      # Discord にクリーンアップ完了を通知
+      # Notify cleanup completion to Discord
       - name: Notify cleanup to Discord
         if: always()
         env:
@@ -67,7 +67,7 @@ jobs:
             -d "$(cat <<EOF
           {
             "embeds": [{
-              "title": "🧹 プレビュー環境を削除しました",
+              "title": "🧹 Preview environment cleaned up",
               "description": "📋 **#${PR_NUMBER}** ${PR_TITLE}\n\n- Worker: \`${WORKER_NAME}\`\n- D1: \`${DB_NAME}\`",
               "color": 10070709,
               "footer": { "text": "sorou PR Preview Cleanup" }
@@ -75,4 +75,4 @@ jobs:
           }
           EOF
           )"
-          echo "✅ Discord に通知を送信しました"
+          echo "✅ Sent notification to Discord"

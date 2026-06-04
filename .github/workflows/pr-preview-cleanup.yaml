@@ -4,8 +4,7 @@ on:
   pull_request:
     types: [closed]
 
-permissions:
-  pull-requests: write
+# No permissions needed (notifying via Discord, not PR comments)
 
 env:
   PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -15,7 +14,7 @@ env:
 jobs:
   cleanup-preview:
     runs-on: ubuntu-latest
-    # フォークからの PR はデプロイされていないのでスキップ
+    # Skip forked PRs (no deployments created)
     if: github.event.pull_request.head.repo.fork == false
 
     steps:
@@ -27,11 +26,11 @@ jobs:
 
       - run: npm ci
 
-      # wrangler を PATH に追加
+      # Add wrangler to PATH
       - name: Add node_modules/.bin to PATH
         run: echo "$PWD/node_modules/.bin" >> "$GITHUB_PATH"
 
-      # Worker 削除
+      # Delete Worker
       - name: Delete Cloudflare Worker
         continue-on-error: true
         run: |
@@ -43,7 +42,7 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
-      # D1 データベース削除
+      # Delete D1 database
       - name: Delete D1 database
         continue-on-error: true
         run: |
@@ -55,20 +54,25 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
-      # クリーンアップ完了をコメント
-      - name: Comment cleanup status on PR
+      # Notify cleanup completion to Discord
+      - name: Notify cleanup to Discord
         if: always()
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const body = `🧹 プレビュー環境を削除しました
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          PR_NUMBER="${{ github.event.pull_request.number }}"
 
-            - Worker: \`${process.env.WORKER_NAME}\`
-            - D1: \`${process.env.DB_NAME}\``;
-
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body,
-            });
+          curl -s -X POST "${{ secrets.DISCORD_WEBHOOK_URL }}" \
+            -H "Content-Type: application/json" \
+            -d "$(cat <<EOF
+          {
+            "embeds": [{
+              "title": "🧹 Preview environment cleaned up",
+              "description": "📋 **#${PR_NUMBER}** ${PR_TITLE}\n\n- Worker: \`${WORKER_NAME}\`\n- D1: \`${DB_NAME}\`",
+              "color": 10070709,
+              "footer": { "text": "sorou PR Preview Cleanup" }
+            }]
+          }
+          EOF
+          )"
+          echo "✅ Sent notification to Discord"

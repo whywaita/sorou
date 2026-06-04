@@ -4,11 +4,9 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
 
-# PR コメントに書き込むために必要な権限
-permissions:
-  pull-requests: write
+# No permissions needed (notifying via Discord, not PR comments)
 
-# 同じ PR に対する連続 push は直列化（古いジョブはキャンセル）
+# Serialize pushes to the same PR (cancel stale runs)
 concurrency:
   group: preview-${{ github.event.pull_request.number }}
   cancel-in-progress: true
@@ -21,7 +19,7 @@ env:
 jobs:
   deploy-preview:
     runs-on: ubuntu-latest
-    # フォークからの PR は Secrets にアクセスできないためスキップ
+    # Skip forked PRs (no access to secrets)
     if: github.event.pull_request.head.repo.fork == false
 
     steps:
@@ -33,29 +31,29 @@ jobs:
 
       - run: npm ci
 
-      # wrangler を PATH に追加（devDependency としてインストールされるため）
+      # Add wrangler to PATH (installed as devDependency)
       - name: Add node_modules/.bin to PATH
         run: echo "$PWD/node_modules/.bin" >> "$GITHUB_PATH"
 
-      # 型チェック
+      # Type check
       - name: Type check
         run: npx tsc --noEmit
 
-      # テスト
+      # Run tests
       - name: Run tests
         run: npm test
 
-      # D1 データベースの再作成（毎回クリーンなDBを用意）
+      # Recreate D1 database (fresh DB each deploy)
       - name: Recreate D1 database
         id: d1
         run: |
           set -e
-          # 既存 DB があれば削除
+          # Delete existing DB if present
           if wrangler d1 info "$DB_NAME" > /dev/null 2>&1; then
             echo "🗑 Deleting existing D1 database '${DB_NAME}'"
             echo 'y' | wrangler d1 delete "$DB_NAME" --skip-confirmation 2>&1 || true
           fi
-          # 新規作成
+          # Create new DB
           echo "🆕 Creating D1 database '${DB_NAME}'"
           CREATE_OUT=$(echo 'y' | wrangler d1 create "$DB_NAME" 2>&1)
           echo "$CREATE_OUT"
@@ -70,7 +68,7 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
-      # D1 マイグレーション適用
+      # Apply D1 migrations
       - name: Apply D1 migrations
         run: |
           set -e
@@ -82,7 +80,7 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
-      # wrangler.pr-<N>.toml の生成（テンプレートからプレースホルダを置換）
+      # Generate PR-specific wrangler config (replace placeholders in template)
       - name: Generate PR-specific wrangler config
         run: |
           CONFIG="wrangler.pr-${PR_NUMBER}.toml"
@@ -93,7 +91,7 @@ jobs:
           echo "Generated $CONFIG"
           cat "$CONFIG"
 
-      # Worker のデプロイ
+      # Deploy Worker
       - name: Deploy to Cloudflare Workers
         id: deploy
         run: |
@@ -101,7 +99,7 @@ jobs:
           DEPLOY_OUTPUT=$(wrangler deploy --config "$CONFIG" 2>&1)
           echo "$DEPLOY_OUTPUT"
 
-          # workers.dev の URL を抽出
+          # Extract workers.dev URL
           PREVIEW_URL=$(echo "$DEPLOY_OUTPUT" | grep -oP 'https://[a-zA-Z0-9._-]+\.workers\.dev' | head -1)
           if [ -z "$PREVIEW_URL" ]; then
             echo "⚠ Could not extract workers.dev URL from deploy output"
@@ -113,42 +111,35 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
-      # PR にプレビュー URL をコメント
-      - name: Comment preview URL on PR
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const url = '${{ steps.deploy.outputs.preview_url }}';
-            const body = `🚀 プレビュー環境がデプロイされました
+      # Get PR title for Discord notification
+      - name: Get PR title
+        id: pr_info
+        run: |
+          PR_TITLE=$(gh pr view ${{ github.event.pull_request.number }} --json title --jq '.title')
+          echo "pr_title=${PR_TITLE}" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ github.token }}
 
-            🔗 ${url}
+      # Send preview URL to Discord
+      - name: Notify preview URL to Discord
+        env:
+          PREVIEW_URL: ${{ steps.deploy.outputs.preview_url }}
+          PR_TITLE: ${{ steps.pr_info.outputs.pr_title }}
+          BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: |
+          PR_NUMBER="${{ github.event.pull_request.number }}"
 
-            > この環境は PR のたびに自動更新されます。PR がクローズされると自動的に削除されます。`;
-
-            // 既存のプレビューコメントを探して更新（なければ新規作成）
-            const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-            });
-
-            const botComment = comments.find(c =>
-              c.body.includes('プレビュー環境がデプロイされました')
-              && c.user.type === 'Bot'
-            );
-
-            if (botComment) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: botComment.id,
-                body,
-              });
-            } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                body,
-              });
-            }
+          curl -s -X POST "${{ secrets.DISCORD_WEBHOOK_URL }}" \
+            -H "Content-Type: application/json" \
+            -d "$(cat <<EOF
+          {
+            "embeds": [{
+              "title": "🚀 Preview environment deployed",
+              "description": "🔗 ${PREVIEW_URL}\n\n📋 **#${PR_NUMBER}** ${PR_TITLE}\n🌿 \`${BRANCH}\`",
+              "color": 5763719,
+              "footer": { "text": "sorou PR Preview" }
+            }]
+          }
+          EOF
+          )"
+          echo "✅ Sent notification to Discord"

@@ -57,9 +57,10 @@ jobs:
       # Discord にクリーンアップ完了を通知
       - name: Notify cleanup to Discord
         if: always()
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
           PR_NUMBER="${{ github.event.pull_request.number }}"
-          PR_TITLE="${{ github.event.pull_request.title }}"
 
           curl -s -X POST "${{ secrets.DISCORD_WEBHOOK_URL }}" \
             -H "Content-Type: application/json" \

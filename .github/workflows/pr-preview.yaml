@@ -122,11 +122,12 @@ jobs:
 
       # Discord にプレビュー URL を通知
       - name: Notify preview URL to Discord
+        env:
+          PREVIEW_URL: ${{ steps.deploy.outputs.preview_url }}
+          PR_TITLE: ${{ steps.pr_info.outputs.pr_title }}
+          BRANCH: ${{ github.event.pull_request.head.ref }}
         run: |
-          PREVIEW_URL="${{ steps.deploy.outputs.preview_url }}"
           PR_NUMBER="${{ github.event.pull_request.number }}"
-          PR_TITLE="${{ steps.pr_info.outputs.pr_title }}"
-          BRANCH="${{ github.event.pull_request.head.ref }}"
 
           curl -s -X POST "${{ secrets.DISCORD_WEBHOOK_URL }}" \
             -H "Content-Type: application/json" \
@@ -134,7 +135,7 @@ jobs:
           {
             "embeds": [{
               "title": "🚀 プレビュー環境がデプロイされました",
-              "description": "🔗 ${PREVIEW_URL}\n\n📋 **#${PR_NUMBER}** ${PR_TITLE}\n🌿 `${BRANCH}`",
+              "description": "🔗 ${PREVIEW_URL}\n\n📋 **#${PR_NUMBER}** ${PR_TITLE}\n🌿 \`${BRANCH}\`",
               "color": 5763719,
               "footer": { "text": "sorou PR Preview" }
             }]

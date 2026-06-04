@@ -25,9 +25,14 @@ function getDomain(c: {
 }
 
 function currentUrl(c: {
-  req: { header: (name: string) => string | undefined; path: string };
+  req: {
+    header: (name: string) => string | undefined;
+    path: string;
+    url: string;
+  };
 }): string {
-  return `${getDomain(c)}${c.req.path}`;
+  const url = new URL(c.req.url);
+  return `${getDomain(c)}${url.pathname}${url.search}`;
 }
 
 // ─── Top page ─────────────────────────────────────────────────────

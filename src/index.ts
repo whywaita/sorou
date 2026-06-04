@@ -21,7 +21,13 @@ app.use("*", csrf);
 // Rate limiting for POST endpoints
 app.use("/events", rateLimit(10, 60));
 app.use("/api/events", rateLimit(10, 60));
-app.use("/e", rateLimit(30, 60));
+// Only rate-limit POST /e (responses, edit, delete), not GET page views
+app.use("/e", async (c, next) => {
+  if (c.req.method === "POST") {
+    return rateLimit(30, 60)(c, next);
+  }
+  await next();
+});
 app.use("/api/events/:id/responses", rateLimit(30, 60));
 app.use("/admin/login", rateLimit(5, 60));
 

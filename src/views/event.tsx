@@ -24,7 +24,7 @@ export function EventPage(props: {
       title={ev.name}
       description={ev.memo || `${ev.name} の日程調整 — 出欠を回答してください`}
       ogType="article"
-      ogImage={`${getOrigin(shareUrl)}/e/${ev.id}/ogp.png`}
+      ogImage={`${getOrigin(shareUrl)}/e/ogp.png?id=${ev.id}`}
       currentUrl={props.currentUrl}
       noindex
     >
@@ -32,7 +32,7 @@ export function EventPage(props: {
         <h1 class="text-2xl font-bold">{escapeHtml(ev.name)}</h1>
         {isCreator && (
           <a
-            href={`/e/${ev.id}/edit`}
+            href={`/e?id=${ev.id}&action=edit`}
             class="shrink-0 ml-4 px-3 py-1.5 border border-slate-300 rounded-md text-sm text-slate-600 hover:bg-slate-50 hover:text-brand transition"
           >
             イベントを編集
@@ -57,7 +57,7 @@ export function EventPage(props: {
                 {responses.map((r) => (
                   <th class="px-4 py-3 text-center font-medium text-slate-600 whitespace-nowrap">
                     <a
-                      href={`/e/${ev.id}?edit=${encodeURIComponent(r.participantName)}#response-form`}
+                      href={`/e?id=${ev.id}&edit=${encodeURIComponent(r.participantName)}#response-form`}
                       class="hover:text-brand hover:underline"
                     >
                       {escapeHtml(r.participantName)}
@@ -124,7 +124,7 @@ export function EventPage(props: {
             ? `${escapeHtml(edit.name)} さんの回答を編集`
             : "出欠を回答する"}
         </h2>
-        <form method="post" action={`/e/${ev.id}/responses`} class="space-y-4">
+        <form method="post" action={`/e?id=${ev.id}`} class="space-y-4">
           <div>
             <label
               for="participant_name"
@@ -295,8 +295,8 @@ const recentEventsScript = `
     // Extract event info from the page
     var titleEl = document.querySelector("h1");
     var name = titleEl ? titleEl.textContent.trim() : "";
-    var path = window.location.pathname; // /e/<ulid>
-    var id = path.split("/e/")[1] || "";
+    var params = new URLSearchParams(window.location.search);
+    var id = params.get("id") || "";
     if (!id) return;
 
     var stored = localStorage.getItem(STORAGE_KEY);
@@ -309,7 +309,7 @@ const recentEventsScript = `
     events.unshift({
       id: id,
       name: name,
-      url: path,
+      url: "/e?id=" + id,
       viewedAt: new Date().toISOString()
     });
 

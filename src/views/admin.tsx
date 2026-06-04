@@ -123,7 +123,7 @@ export function AdminEventList(props: {
                 <tr class="border-b border-slate-100 hover:bg-slate-50">
                   <td class="px-4 py-3">
                     <a
-                      href={`/e/${ev.id}`}
+                      href={`/e?id=${ev.id}`}
                       class="text-brand hover:underline font-medium"
                     >
                       {escapeHtml(ev.name)}

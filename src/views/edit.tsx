@@ -13,11 +13,11 @@ export function EditEventPage(props: {
   const { event: ev, errors: e = {}, values: v = {}, isAdmin = false } = props;
   const editAction = isAdmin
     ? `/admin/events/${ev.id}/edit`
-    : `/e/${ev.id}/edit`;
+    : `/e?id=${ev.id}&action=edit`;
   const deleteAction = isAdmin
     ? `/admin/events/${ev.id}/delete`
-    : `/e/${ev.id}/delete`;
-  const backUrl = isAdmin ? "/admin" : `/e/${ev.id}`;
+    : `/e?id=${ev.id}&action=delete`;
+  const backUrl = isAdmin ? "/admin" : `/e?id=${ev.id}`;
   const backLabel = isAdmin ? "← 管理画面に戻る" : "← イベントページに戻る";
   // Build default dates string from current candidates
   const defaultDates = ev.candidates.map((c) => c.date).join("\n");

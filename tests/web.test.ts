@@ -45,31 +45,31 @@ describe("GET /（トップページ・カレンダー入力補助 F-30）", () 
   });
 });
 
-describe("GET /e/:id（存在しないイベント）", () => {
+describe("GET /e?id=<id>（存在しないイベント）", () => {
   it("HTTP 404 を返す", async () => {
-    const res = await app.request("/e/nonexistent", {}, env);
+    const res = await app.request("/e?id=nonexistent", {}, env);
     expect(res.status).toBe(404);
   });
 
   it("404 ページの HTML を返す", async () => {
-    const res = await app.request("/e/nonexistent", {}, env);
+    const res = await app.request("/e?id=nonexistent", {}, env);
     expect(res.headers.get("content-type")).toContain("text/html");
     const body = await res.text();
     expect(body).toContain("ページが見つかりません");
   });
 });
 
-describe("GET /e/:id/ogp.png（存在しないイベント）", () => {
+describe("GET /e/ogp.png?id=<id>（存在しないイベント）", () => {
   it("HTTP 404 を返す", async () => {
-    const res = await app.request("/e/nonexistent/ogp.png", {}, env);
+    const res = await app.request("/e/ogp.png?id=nonexistent", {}, env);
     expect(res.status).toBe(404);
   });
 });
 
-describe("POST /e/:id/responses（存在しないイベント）", () => {
+describe("POST /e?id=<id>（存在しないイベント）", () => {
   it("HTTP 404 を返す", async () => {
     const res = await app.request(
-      "/e/nonexistent/responses",
+      "/e?id=nonexistent",
       { method: "POST", body: new URLSearchParams({ participant_name: "x" }) },
       env,
     );
@@ -77,17 +77,17 @@ describe("POST /e/:id/responses（存在しないイベント）", () => {
   });
 });
 
-describe("GET /e/:id/edit（存在しないイベント）", () => {
+describe("GET /e?id=<id>&action=edit（存在しないイベント）", () => {
   it("HTTP 404 を返す", async () => {
-    const res = await app.request("/e/nonexistent/edit", {}, env);
+    const res = await app.request("/e?id=nonexistent&action=edit", {}, env);
     expect(res.status).toBe(404);
   });
 });
 
-describe("POST /e/:id/delete（存在しないイベント）", () => {
+describe("POST /e?id=<id>&action=delete（存在しないイベント）", () => {
   it("HTTP 404 を返す", async () => {
     const res = await app.request(
-      "/e/nonexistent/delete",
+      "/e?id=nonexistent&action=delete",
       { method: "POST" },
       env,
     );
@@ -106,8 +106,52 @@ describe("LocalStorage スクリプト埋め込み", () => {
   it("イベントページ（404）にも recent events スクリプトが含まれる", async () => {
     // Even when event not found, the script should not be present
     // (404 page doesn't include it)
-    const res = await app.request("/e/nonexistent", {}, env);
+    const res = await app.request("/e?id=nonexistent", {}, env);
     expect(res.status).toBe(404);
+  });
+});
+
+// ─── Legacy redirects ─────────────────────────────────────────────
+
+describe("旧URLから新URLへのリダイレクト", () => {
+  it("GET /e/:id は 301 リダイレクト", async () => {
+    const res = await app.request("/e/nonexistent", {}, env);
+    expect(res.status).toBe(301);
+    expect(res.headers.get("location")).toBe("/e?id=nonexistent");
+  });
+
+  it("GET /e/:id/ogp.png は 301 リダイレクト", async () => {
+    const res = await app.request("/e/nonexistent/ogp.png", {}, env);
+    expect(res.status).toBe(301);
+    expect(res.headers.get("location")).toBe("/e/ogp.png?id=nonexistent");
+  });
+
+  it("GET /e/:id/edit は 301 リダイレクト", async () => {
+    const res = await app.request("/e/nonexistent/edit", {}, env);
+    expect(res.status).toBe(301);
+    expect(res.headers.get("location")).toBe("/e?id=nonexistent&action=edit");
+  });
+
+  it("POST /e/:id/responses は 307 リダイレクト", async () => {
+    const res = await app.request(
+      "/e/nonexistent/responses",
+      { method: "POST", body: new URLSearchParams({ participant_name: "x" }) },
+      env,
+    );
+    expect(res.status).toBe(307);
+    expect(res.headers.get("location")).toBe("/e?id=nonexistent");
+  });
+
+  it("POST /e/:id/edit は 307 リダイレクト", async () => {
+    const res = await app.request("/e/nonexistent/edit", { method: "POST" }, env);
+    expect(res.status).toBe(307);
+    expect(res.headers.get("location")).toBe("/e?id=nonexistent&action=edit");
+  });
+
+  it("POST /e/:id/delete は 307 リダイレクト", async () => {
+    const res = await app.request("/e/nonexistent/delete", { method: "POST" }, env);
+    expect(res.status).toBe(307);
+    expect(res.headers.get("location")).toBe("/e?id=nonexistent&action=delete");
   });
 });
 

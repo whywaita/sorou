@@ -36,7 +36,7 @@
 | F-01 | イベント名（必須、最大100文字）を入力できる | P0 |
 | F-02 | メモ（任意、最大500文字）を入力できる | P1 |
 | F-03 | 候補日時を複数行で入力できる（必須、1行1候補、最大30候補） | P0 |
-| F-04 | 作成成功時、イベント固有の URL (`/e/<ulid>`) にリダイレクトする | P0 |
+| F-04 | 作成成功時、イベント固有の URL (`/e?id=<ulid>`) にリダイレクトする | P0 |
 | F-05 | 入力バリデーションエラー時、エラーメッセージとともに入力値を保持して再表示 | P1 |
 | F-30 | 候補日時の入力補助としてカレンダーを表示し、日付クリックで候補日時の textarea（F-03）に1行挿入する。挿入時刻はデフォルト開始時刻フィールド（既定 `19:00`）の値を使う | P1 |
 
@@ -72,14 +72,14 @@
 | F-15 | 回答成功時、イベントページにリダイレクトし、更新された表を表示する | P0 |
 | F-19 | 出欠表の参加者名はリンクになっており、クリックすると回答フォームにその参加者の現在の回答（名前・コメント・各候補日のステータス）がプリフィルされ、編集して再送信できる。再送信は F-14（同名上書き）で処理する | P1 |
 
-> **F-19 編集インタラクション**: 参加者名のリンク先は `GET /e/:id?edit=<participant_name>`。サーバーが該当回答を取得してフォームの初期値（`name`・`comment`・各 `status_N` のチェック状態）をプリフィルし、フォーム見出しを「<name> さんの回答を編集」に切り替える。
+> **F-19 編集インタラクション**: 参加者名のリンク先は `GET /e?id=<id>&edit=<participant_name>`。サーバーが該当回答を取得してフォームの初期値（`name`・`comment`・各 `status_N` のチェック状態）をプリフィルし、フォーム見出しを「<name> さんの回答を編集」に切り替える。
 > URL 共有型・認証不要のため、編集も上書きと同様に名前の一致のみで許可する。プリフィルはサーバーサイドで完結し（SSR）、クライアント JS は必須としない（任意の遷移なしプリフィルは段階的拡張）。
 
 ### 2.4 URL 共有
 
 | ID | 要件 | 優先度 |
 |----|------|--------|
-| F-16 | イベントURL (`/e/<ulid>`) を画面に表示する | P1 |
+| F-16 | イベントURL (`/e?id=<ulid>`) を画面に表示する | P1 |
 | F-17 | URL を知っていれば誰でもイベントの閲覧・回答が可能 | P0 |
 
 ### 2.5 管理画面
@@ -127,31 +127,31 @@ App
 ├── Layout (共通ヘッダー/フッター)
 │   ├── TopPage (GET /)
 │   │   └── CreateEventForm
-│   └── EventPage (GET /e/:id)
-│       ├── EventHeader (イベント名 + メモ)
-│       ├── ScheduleTable (出欠表)
-│       │   ├── TableHeader (候補日 + 参加者名列 ※名前はリンク → ?edit=)
-│       │   ├── TableRow × N (各候補日の行 ※〇最多をハイライト)
-│       │   └── SummaryRow (集計行)
-│       ├── ResponseForm (回答フォーム ※?edit= 指定時はプリフィル)
-│       │   ├── FormHeading (新規:「出欠を回答する」/ 編集:「<name> さんの回答を編集」)
-│       │   ├── NameInput
-│       │   ├── CommentInput
-│       │   └── StatusSelector × N (各候補日のラジオボタン)
-│       └── ShareURL (共有URL表示)
+│   ├── EventPage (GET /e?id=)
+│   │   ├── EventHeader (イベント名 + メモ)
+│   │   ├── ScheduleTable (出欠表)
+│   │   │   ├── TableHeader (候補日 + 参加者名列 ※名前はリンク → ?edit=)
+│   │   │   ├── TableRow × N (各候補日の行 ※〇最多をハイライト)
+│   │   │   └── SummaryRow (集計行)
+│   │   ├── ResponseForm (回答フォーム ※?edit= 指定時はプリフィル)
+│   │   │   ├── FormHeading (新規:「出欠を回答する」/ 編集:「<name> さんの回答を編集」)
+│   │   │   ├── NameInput
+│   │   │   ├── CommentInput
+│   │   │   └── StatusSelector × N (各候補日のラジオボタン)
+│   │   └── ShareURL (共有URL表示)
 ```
 
 ### 4.2 画面遷移図
 
 ```
  ┌──────────┐  POST /events    ┌──────────┐
- │  TOP (/) │ ───────────────→ │ /e/:id   │
+ │  TOP (/) │ ───────────────→ │ /e?id=   │
  │          │                  │          │
  │ フォーム │                  │ 出欠表   │
  │          │ ←──── validation │ フォーム │
  └──────────┘     error        └──────────┘
                                     ↑  │
-                                    │  │ POST /e/:id/responses
+                                    │  │ POST /e?id=
                                     └──┘ (リダイレクト)
 ```
 
@@ -175,18 +175,43 @@ API は **2系統** を提供する：
 
 ### 5.1 全エンドポイント一覧
 
+> **注**: イベント関連のエンドポイントは CDN キャッシュ回避のため、イベントIDをクエリパラメータ (`?id=`) で渡す。
+> 旧URL（`/e/:id` 等）は新URLへの 301/307 リダイレクトで後方互換性を維持している。
+
+#### 新URL（現行）
+
 | Method | Path | Accept | Description |
 |--------|------|--------|-------------|
 | `GET` | `/` | HTML | トップページ（イベント作成フォーム） |
 | `POST` | `/events` | HTML | イベント作成（form POST → redirect） |
 | `POST` | `/api/events` | JSON | イベント作成（JSON） |
-| `GET` | `/e/:id` | HTML | イベント詳細（出欠表 + 回答フォーム） |
+| `GET` | `/e` | HTML | イベント詳細（`?id=<ulid>` / 任意 `?edit=<name>`） |
+| `GET` | `/e` | HTML | イベント編集フォーム（`?id=<ulid>&action=edit`、作成者限定） |
+| `POST` | `/e` | HTML | 回答投稿（`?id=<ulid>`） |
+| `POST` | `/e` | HTML | イベント更新（`?id=<ulid>&action=edit`、作成者限定） |
+| `POST` | `/e` | HTML | イベント削除（`?id=<ulid>&action=delete`、作成者限定） |
+| `GET` | `/e/ogp.png` | PNG | イベント別OGP画像（`?id=<ulid>`）/ 省略時は共通OGP |
+| `GET` | `/ogp.png` | PNG | 共通OGP画像 |
 | `GET` | `/api/events/:id` | JSON | イベント詳細（JSON） |
-| `POST` | `/e/:id/responses` | HTML | 回答投稿（form POST → redirect） |
 | `POST` | `/api/events/:id/responses` | JSON | 回答投稿（JSON） |
+| `GET` | `/privacy` | HTML | プライバシーポリシー |
+| `GET` | `/terms` | HTML | 利用規約 |
 | `GET` | `/admin` | HTML | 管理画面（ログイン / イベント一覧） |
 | `POST` | `/admin/login` | HTML | 管理画面ログイン |
-| `POST` | `/admin/events/:id/delete` | HTML | イベント削除 |
+| `GET` | `/admin/events/:id/edit` | HTML | 管理画面イベント編集フォーム |
+| `POST` | `/admin/events/:id/edit` | HTML | 管理画面イベント更新 |
+| `POST` | `/admin/events/:id/delete` | HTML | 管理画面イベント削除 |
+
+#### 旧URL（レガシーリダイレクト）
+
+| Method | 旧Path | → 新URL | Status |
+|--------|--------|---------|--------|
+| `GET` | `/e/:id` | `/e?id=:id` | 301 |
+| `GET` | `/e/:id/edit` | `/e?id=:id&action=edit` | 301 |
+| `GET` | `/e/:id/ogp.png` | `/e/ogp.png?id=:id` | 301 |
+| `POST` | `/e/:id/responses` | `/e?id=:id` | 307 |
+| `POST` | `/e/:id/edit` | `/e?id=:id&action=edit` | 307 |
+| `POST` | `/e/:id/delete` | `/e?id=:id&action=delete` | 307 |
 
 ---
 
@@ -209,7 +234,7 @@ memo: お店は決まり次第連絡します
 dates: 6/15(月) 19:00-\n6/16(火) 19:00-\n6/17(水) 19:00-
 ```
 
-**Success Response**: `302 Found` → `Location: /e/01ARZ3NDEKTSV4RRFFQ69G5FAV`
+**Success Response**: `302 Found` → `Location: /e?id=01ARZ3NDEKTSV4RRFFQ69G5FAV`
 
 **Error Response**: `200 OK` — フォームをエラーメッセージとともに再表示
 
@@ -220,24 +245,34 @@ dates: 6/15(月) 19:00-\n6/16(火) 19:00-\n6/17(水) 19:00-
 | `memo` | 任意, 0〜500文字 |
 | `dates` | 必須, 1〜30行, 各行 1〜100文字, 空行除去 |
 
-#### 5.2.3 GET `/e/:id`
-
-**URL Params**: `id` (ULID) — イベントID
+#### 5.2.3 GET `/e`
 
 **Query Params**:
+
 | Name | Required | Description |
 |------|----------|-------------|
+| `id` | **必須** | イベントID（ULID） |
 | `edit` | 任意 | 参加者名。指定時、該当参加者の現在の回答を回答フォームにプリフィルし、見出しを編集モードに切り替える（F-19）。該当者がいない場合は無視して新規フォームを表示 |
+| `action` | 任意 | `edit` を指定するとイベント編集フォームを表示する（作成者限定。F-20, F-30） |
 
-**Success Response**: `200 OK` — HTML ページ（出欠表 + 回答フォーム）
+**Success Response**: `200 OK` — HTML ページ（出欠表 + 回答フォーム / action=edit の場合は編集フォーム）
 
-**Error Response**: `404 Not Found` — イベントが存在しない場合
+**Error Response**: `404 Not Found` — イベントが存在しない場合、または非作成者が action=edit を指定した場合
 
-#### 5.2.4 POST `/e/:id/responses`
+#### 5.2.4 POST `/e`
+
+イベントへの回答投稿、編集、削除を行う。クエリパラメータでアクションを切り替える。
+
+**Query Params**:
+
+| Name | Required | Description |
+|------|----------|-------------|
+| `id` | **必須** | イベントID（ULID） |
+| `action` | 任意 | `edit` → イベント更新 / `delete` → イベント削除 / 省略 → 回答投稿 |
 
 **Content-Type**: `application/x-www-form-urlencoded`
 
-**Request Body**:
+**Request Body（回答投稿時、action 省略）**:
 ```
 participant_name: whytaro
 comment: 遅れるかも
@@ -246,9 +281,13 @@ status_1: ×
 status_2: △
 ```
 
-**Success Response**: `302 Found` → `Location: /e/01ARZ3NDEKTSV4RRFFQ69G5FAV`
+**Success Response（回答投稿）**: `302 Found` → `Location: /e?id=01ARZ3NDEKTSV4RRFFQ69G5FAV`
 
-**Validation Rules**:
+**Success Response（イベント更新）**: `302 Found` → `Location: /e?id=01ARZ3NDEKTSV4RRFFQ69G5FAV`
+
+**Success Response（イベント削除）**: `302 Found` → `Location: /`
+
+**Validation Rules（回答投稿）**:
 | Field | Rule |
 |-------|------|
 | `participant_name` | 必須, 1〜50文字 |
@@ -345,7 +384,7 @@ password: <admin-password>
   ],
   "responses": [],
   "created_at": "2026-06-01T12:00:00Z",
-  "url": "https://example.com/e/01ARZ3NDEKTSV4RRFFQ69G5FAV"
+  "url": "https://example.com/e?id=01ARZ3NDEKTSV4RRFFQ69G5FAV"
 }
 ```
 
@@ -390,7 +429,7 @@ password: <admin-password>
     }
   ],
   "created_at": "2026-06-01T12:00:00Z",
-  "url": "https://example.com/e/01ARZ3NDEKTSV4RRFFQ69G5FAV"
+  "url": "https://example.com/e?id=01ARZ3NDEKTSV4RRFFQ69G5FAV"
 }
 ```
 

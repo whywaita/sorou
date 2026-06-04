@@ -157,7 +157,7 @@ admin.get("/admin/events/:id/edit", async (c) => {
     <EditEventPage
       event={event}
       currentUrl={currentUrl(c)}
-      shareUrl={`${getDomain(c)}/e/${eventId}`}
+      shareUrl={`${getDomain(c)}/e?id=${eventId}`}
       isAdmin
     />,
   );
@@ -189,7 +189,7 @@ admin.post("/admin/events/:id/edit", async (c) => {
       <EditEventPage
         event={event}
         currentUrl={currentUrl(c)}
-        shareUrl={`${getDomain(c)}/e/${eventId}`}
+        shareUrl={`${getDomain(c)}/e?id=${eventId}`}
         errors={fieldErrors}
         values={{
           name: body.name as string,

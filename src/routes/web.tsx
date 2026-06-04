@@ -30,6 +30,8 @@ function currentUrl(c: {
   return `${getDomain(c)}${c.req.path}`;
 }
 
+// ─── Top page ─────────────────────────────────────────────────────
+
 // GET /
 web.get("/", (c) => {
   return c.html(<TopPage currentUrl={currentUrl(c)} />);
@@ -80,17 +82,38 @@ web.post("/events", async (c) => {
     });
   }
 
-  return c.redirect(`/e/${id}`);
+  return c.redirect(`/e?id=${id}`);
 });
 
-// GET /e/:id
-web.get("/e/:id", async (c) => {
-  const id = c.req.param("id");
-  const db = createDB(c.env.DB);
+// ─── Event page (query-param based: /e?id=<id>) ──────────────────
 
+// GET /e?id=<id>  — event page
+//   ?edit=<name>  → prefill response form for that participant
+//   ?action=edit  → show edit event form (creator only)
+web.get("/e", async (c) => {
+  const id = c.req.query("id");
+  if (!id) return c.notFound();
+
+  const action = c.req.query("action");
+  const db = createDB(c.env.DB);
   const event = await loadEvent(db, id);
   if (!event) return c.html(<NotFoundPage currentUrl={currentUrl(c)} />, 404);
 
+  // Edit event form (creator)
+  if (action === "edit") {
+    if (!(await isCreator(c, event.creatorTokenHash))) {
+      return c.html(<NotFoundPage currentUrl={currentUrl(c)} />, 404);
+    }
+    return c.html(
+      <EditEventPage
+        event={event}
+        currentUrl={currentUrl(c)}
+        shareUrl={`${getDomain(c)}/e?id=${id}`}
+      />,
+    );
+  }
+
+  // Event display with optional response prefill
   const editParam = c.req.query("edit");
   const editData = editParam ? getEditData(event, editParam) : undefined;
   const creatorFlag = await isCreator(c, event.creatorTokenHash);
@@ -98,7 +121,7 @@ web.get("/e/:id", async (c) => {
   return c.html(
     <EventPage
       event={event}
-      shareUrl={`${getDomain(c)}/e/${id}`}
+      shareUrl={`${getDomain(c)}/e?id=${id}`}
       currentUrl={currentUrl(c)}
       edit={editData}
       isCreator={creatorFlag}
@@ -106,29 +129,88 @@ web.get("/e/:id", async (c) => {
   );
 });
 
-// GET /ogp.png — default OGP image (site name + tagline)
-web.get("/ogp.png", async () => {
-  return renderOgpImage();
-});
+// POST /e?id=<id>
+//   no action param          → submit response
+//   ?action=edit   → update event (creator)
+//   ?action=delete → delete event (creator)
+web.post("/e", async (c) => {
+  const id = c.req.query("id");
+  if (!id) return c.notFound();
 
-// GET /e/:id/ogp.png — dynamic OGP image per event
-web.get("/e/:id/ogp.png", async (c) => {
-  const id = c.req.param("id");
+  const action = c.req.query("action");
   const db = createDB(c.env.DB);
 
-  const event = await loadEvent(db, id);
-  if (!event) return c.notFound();
+  // ── Delete ──
+  if (action === "delete") {
+    const event = await loadEvent(db, id);
+    if (!event) return c.html(<NotFoundPage currentUrl={currentUrl(c)} />, 404);
 
-  return renderOgpImage({ title: event.name, description: event.memo });
-});
+    if (!(await isCreator(c, event.creatorTokenHash))) {
+      return c.html(<NotFoundPage currentUrl={currentUrl(c)} />, 404);
+    }
 
-// POST /e/:id/responses
-web.post("/e/:id/responses", async (c) => {
-  const eventId = c.req.param("id");
+    // Cascade deletes candidates, responses, response_details
+    await db.delete(events).where(eq(events.id, id));
+    return c.redirect("/");
+  }
+
+  // ── Edit (update) ──
+  if (action === "edit") {
+    const event = await loadEvent(db, id);
+    if (!event) return c.html(<NotFoundPage currentUrl={currentUrl(c)} />, 404);
+
+    if (!(await isCreator(c, event.creatorTokenHash))) {
+      return c.html(<NotFoundPage currentUrl={currentUrl(c)} />, 404);
+    }
+
+    const body = await c.req.parseBody();
+    const result = createEventSchema.safeParse(body);
+    if (!result.success) {
+      const fieldErrors: Record<string, string[]> = {};
+      for (const issue of result.error.issues) {
+        const key = issue.path[0] as string;
+        if (!fieldErrors[key]) fieldErrors[key] = [];
+        fieldErrors[key].push(issue.message);
+      }
+      return c.html(
+        <EditEventPage
+          event={event}
+          currentUrl={currentUrl(c)}
+          shareUrl={`${getDomain(c)}/e?id=${id}`}
+          errors={fieldErrors}
+          values={{
+            name: body.name as string,
+            memo: body.memo as string,
+            dates: body.dates as string,
+          }}
+        />,
+      );
+    }
+
+    // Update event name + memo
+    await db
+      .update(events)
+      .set({ name: result.data.name, memo: result.data.memo })
+      .where(eq(events.id, id));
+
+    // Replace candidates: delete old responses + candidates → insert new
+    const { responses: respTable } = await import("../db/schema");
+    await db.delete(respTable).where(eq(respTable.eventId, id));
+    await db.delete(candidates).where(eq(candidates.eventId, id));
+    for (let i = 0; i < result.data.dates.length; i++) {
+      await db.insert(candidates).values({
+        eventId: id,
+        date: result.data.dates[i],
+        sortOrder: i,
+      });
+    }
+
+    return c.redirect(`/e?id=${id}`);
+  }
+
+  // ── Submit response (default) ──
   const body = await c.req.parseBody();
-  const db = createDB(c.env.DB);
-
-  const event = await loadEvent(db, eventId);
+  const event = await loadEvent(db, id);
   if (!event) return c.html(<NotFoundPage currentUrl={currentUrl(c)} />, 404);
 
   const participantName = (body.participant_name as string)?.trim() ?? "";
@@ -160,7 +242,7 @@ web.post("/e/:id/responses", async (c) => {
     return c.html(
       <EventPage
         event={event}
-        shareUrl={`${getDomain(c)}/e/${eventId}`}
+        shareUrl={`${getDomain(c)}/e?id=${id}`}
         currentUrl={currentUrl(c)}
         errors={errors}
         edit={{
@@ -181,7 +263,7 @@ web.post("/e/:id/responses", async (c) => {
     .from(respTable)
     .where(
       and(
-        eq(respTable.eventId, eventId),
+        eq(respTable.eventId, id),
         eq(respTable.participantName, participantName),
       ),
     )
@@ -195,7 +277,7 @@ web.post("/e/:id/responses", async (c) => {
     const inserted = await db
       .insert(respTable)
       .values({
-        eventId,
+        eventId: id,
         participantName,
         comment,
       })
@@ -211,107 +293,32 @@ web.post("/e/:id/responses", async (c) => {
     });
   }
 
-  return c.redirect(`/e/${eventId}`);
+  return c.redirect(`/e?id=${id}`);
 });
 
-// ─── Edit event (creator only) ────────────────────────────────────
+// ─── OGP images ───────────────────────────────────────────────────
 
-// GET /e/:id/edit — show edit form
-web.get("/e/:id/edit", async (c) => {
-  const id = c.req.param("id");
+// GET /ogp.png — default OGP image (site name + tagline)
+web.get("/ogp.png", async () => {
+  return renderOgpImage();
+});
+
+// GET /e/ogp.png?id=<id> — dynamic OGP image per event
+web.get("/e/ogp.png", async (c) => {
+  const id = c.req.query("id");
+  if (!id) {
+    // No event ID → return default OGP
+    return renderOgpImage();
+  }
+
   const db = createDB(c.env.DB);
-
   const event = await loadEvent(db, id);
-  if (!event) return c.html(<NotFoundPage currentUrl={currentUrl(c)} />, 404);
+  if (!event) return c.notFound();
 
-  if (!(await isCreator(c, event.creatorTokenHash))) {
-    return c.html(<NotFoundPage currentUrl={currentUrl(c)} />, 404);
-  }
-
-  return c.html(
-    <EditEventPage
-      event={event}
-      currentUrl={currentUrl(c)}
-      shareUrl={`${getDomain(c)}/e/${id}`}
-    />,
-  );
+  return renderOgpImage({ title: event.name, description: event.memo });
 });
 
-// POST /e/:id/edit — update event
-web.post("/e/:id/edit", async (c) => {
-  const id = c.req.param("id");
-  const body = await c.req.parseBody();
-  const db = createDB(c.env.DB);
-
-  const event = await loadEvent(db, id);
-  if (!event) return c.html(<NotFoundPage currentUrl={currentUrl(c)} />, 404);
-
-  if (!(await isCreator(c, event.creatorTokenHash))) {
-    return c.html(<NotFoundPage currentUrl={currentUrl(c)} />, 404);
-  }
-
-  // Validate
-  const result = createEventSchema.safeParse(body);
-  if (!result.success) {
-    const fieldErrors: Record<string, string[]> = {};
-    for (const issue of result.error.issues) {
-      const key = issue.path[0] as string;
-      if (!fieldErrors[key]) fieldErrors[key] = [];
-      fieldErrors[key].push(issue.message);
-    }
-    return c.html(
-      <EditEventPage
-        event={event}
-        currentUrl={currentUrl(c)}
-        shareUrl={`${getDomain(c)}/e/${id}`}
-        errors={fieldErrors}
-        values={{
-          name: body.name as string,
-          memo: body.memo as string,
-          dates: body.dates as string,
-        }}
-      />,
-    );
-  }
-
-  // Update event name + memo
-  await db
-    .update(events)
-    .set({ name: result.data.name, memo: result.data.memo })
-    .where(eq(events.id, id));
-
-  // Replace candidates: delete old responses + candidates → insert new
-  const { responses: respTable } = await import("../db/schema");
-  await db.delete(respTable).where(eq(respTable.eventId, id));
-  await db.delete(candidates).where(eq(candidates.eventId, id));
-  for (let i = 0; i < result.data.dates.length; i++) {
-    await db.insert(candidates).values({
-      eventId: id,
-      date: result.data.dates[i],
-      sortOrder: i,
-    });
-  }
-
-  return c.redirect(`/e/${id}`);
-});
-
-// POST /e/:id/delete — delete event
-web.post("/e/:id/delete", async (c) => {
-  const id = c.req.param("id");
-  const db = createDB(c.env.DB);
-
-  const event = await loadEvent(db, id);
-  if (!event) return c.html(<NotFoundPage currentUrl={currentUrl(c)} />, 404);
-
-  if (!(await isCreator(c, event.creatorTokenHash))) {
-    return c.html(<NotFoundPage currentUrl={currentUrl(c)} />, 404);
-  }
-
-  // Cascade deletes candidates, responses, response_details
-  await db.delete(events).where(eq(events.id, id));
-
-  return c.redirect("/");
-});
+// ─── Static pages ─────────────────────────────────────────────────
 
 // GET /privacy
 web.get("/privacy", (c) => {
@@ -322,6 +329,44 @@ web.get("/privacy", (c) => {
 web.get("/terms", (c) => {
   return c.html(<TermsPage currentUrl={currentUrl(c)} />);
 });
+
+// ─── Legacy redirects (old path-based URLs → new query-based) ─────
+
+// GET /e/:id
+web.get("/e/:id", (c) => {
+  const id = c.req.param("id");
+  // Preserve existing query params (e.g. ?edit=<name>)
+  const qs = new URL(c.req.url).search;
+  const separator = qs ? "&" : "";
+  return c.redirect(`/e?id=${id}${separator}${qs.replace(/^\?/, "")}`, 301);
+});
+
+// GET /e/:id/ogp.png
+web.get("/e/:id/ogp.png", (c) => {
+  return c.redirect(`/e/ogp.png?id=${c.req.param("id")}`, 301);
+});
+
+// GET /e/:id/edit
+web.get("/e/:id/edit", (c) => {
+  return c.redirect(`/e?id=${c.req.param("id")}&action=edit`, 301);
+});
+
+// POST /e/:id/responses
+web.post("/e/:id/responses", (c) => {
+  return c.redirect(`/e?id=${c.req.param("id")}`, 307);
+});
+
+// POST /e/:id/edit
+web.post("/e/:id/edit", (c) => {
+  return c.redirect(`/e?id=${c.req.param("id")}&action=edit`, 307);
+});
+
+// POST /e/:id/delete
+web.post("/e/:id/delete", (c) => {
+  return c.redirect(`/e?id=${c.req.param("id")}&action=delete`, 307);
+});
+
+// ─── Helpers ──────────────────────────────────────────────────────
 
 export async function loadEvent(
   db: ReturnType<typeof createDB>,

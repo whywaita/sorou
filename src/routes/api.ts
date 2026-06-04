@@ -52,7 +52,7 @@ api.post("/events", zValidator("json", createEventJsonSchema), async (c) => {
       dates: event!.candidates.map((c) => ({ id: c.id, date: c.date })),
       responses: [],
       created_at: event!.createdAt,
-      url: `${domain}/e/${id}`,
+      url: `${domain}/e?id=${id}`,
     },
     201,
   );
@@ -87,7 +87,7 @@ api.get("/events/:id", async (c) => {
       created_at: r.createdAt,
     })),
     created_at: event.createdAt,
-    url: `${domain}/e/${id}`,
+    url: `${domain}/e?id=${id}`,
   });
 });
 

@@ -4,8 +4,7 @@ on:
   pull_request:
     types: [closed]
 
-permissions:
-  pull-requests: write
+# 必要なし（PRコメントは行わず、Discord通知のみ）
 
 env:
   PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -55,20 +54,24 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
-      # クリーンアップ完了をコメント
-      - name: Comment cleanup status on PR
+      # Discord にクリーンアップ完了を通知
+      - name: Notify cleanup to Discord
         if: always()
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const body = `🧹 プレビュー環境を削除しました
+        run: |
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          PR_TITLE="${{ github.event.pull_request.title }}"
 
-            - Worker: \`${process.env.WORKER_NAME}\`
-            - D1: \`${process.env.DB_NAME}\``;
-
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body,
-            });
+          curl -s -X POST "${{ secrets.DISCORD_WEBHOOK_URL }}" \
+            -H "Content-Type: application/json" \
+            -d "$(cat <<EOF
+          {
+            "embeds": [{
+              "title": "🧹 プレビュー環境を削除しました",
+              "description": "📋 **#${PR_NUMBER}** ${PR_TITLE}\n\n- Worker: \`${WORKER_NAME}\`\n- D1: \`${DB_NAME}\`",
+              "color": 10070709,
+              "footer": { "text": "sorou PR Preview Cleanup" }
+            }]
+          }
+          EOF
+          )"
+          echo "✅ Discord に通知を送信しました"

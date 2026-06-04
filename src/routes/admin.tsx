@@ -26,9 +26,14 @@ function getDomain(c: {
 }
 
 function currentUrl(c: {
-  req: { header: (name: string) => string | undefined; path: string };
+  req: {
+    header: (name: string) => string | undefined;
+    path: string;
+    url: string;
+  };
 }): string {
-  return `${getDomain(c)}${c.req.path}`;
+  const url = new URL(c.req.url);
+  return `${getDomain(c)}${url.pathname}${url.search}`;
 }
 
 // Middleware: check admin enabled
@@ -157,7 +162,7 @@ admin.get("/admin/events/:id/edit", async (c) => {
     <EditEventPage
       event={event}
       currentUrl={currentUrl(c)}
-      shareUrl={`${getDomain(c)}/e/${eventId}`}
+      shareUrl={`${getDomain(c)}/e?id=${eventId}`}
       isAdmin
     />,
   );
@@ -189,7 +194,7 @@ admin.post("/admin/events/:id/edit", async (c) => {
       <EditEventPage
         event={event}
         currentUrl={currentUrl(c)}
-        shareUrl={`${getDomain(c)}/e/${eventId}`}
+        shareUrl={`${getDomain(c)}/e?id=${eventId}`}
         errors={fieldErrors}
         values={{
           name: body.name as string,

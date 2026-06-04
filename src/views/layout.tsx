@@ -64,9 +64,7 @@ export const Layout = (props: LayoutProps) => {
         <!-- Canonical URL -->
         <link rel="canonical" href="${props.currentUrl}" />
 
-        ${props.noindex
-          ? html`<meta name="robots" content="noindex" />`
-          : ""}
+        ${props.noindex ? html`<meta name="robots" content="noindex" />` : ""}
 
         <script src="https://cdn.tailwindcss.com"></script>
         <script>

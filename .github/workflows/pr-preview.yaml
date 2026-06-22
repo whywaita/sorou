@@ -42,8 +42,7 @@ jobs:
       - name: Create D1 database
         id: d1
         run: |
-          set -e
-          CREATE_OUT=$(wrangler d1 create sorou-db --temporary 2>&1)
+          CREATE_OUT=$(wrangler d1 create sorou-db --temporary 2>&1) || true
           echo "$CREATE_OUT"
           DB_ID=$(echo "$CREATE_OUT" | grep -oP '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' | head -1)
           if [ -z "$DB_ID" ]; then

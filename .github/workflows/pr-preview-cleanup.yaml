@@ -6,57 +6,15 @@ on:
 
 # No permissions needed (notifying via Discord, not PR comments)
 
-env:
-  PR_NUMBER: ${{ github.event.pull_request.number }}
-  WORKER_NAME: sorou-pr-${{ github.event.pull_request.number }}
-  DB_NAME: sorou-pr-${{ github.event.pull_request.number }}-db
-
 jobs:
-  cleanup-preview:
+  notify-cleanup:
     runs-on: ubuntu-latest
     # Skip forked PRs (no deployments created)
     if: github.event.pull_request.head.repo.fork == false
 
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-
-      - run: npm ci
-
-      # Add wrangler to PATH
-      - name: Add node_modules/.bin to PATH
-        run: echo "$PWD/node_modules/.bin" >> "$GITHUB_PATH"
-
-      # Delete Worker
-      - name: Delete Cloudflare Worker
-        continue-on-error: true
-        run: |
-          echo "🗑 Deleting worker: ${WORKER_NAME}"
-          wrangler delete "$WORKER_NAME" --force 2>&1 || {
-            echo "⚠ Worker deletion failed or worker did not exist — continuing"
-          }
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-
-      # Delete D1 database
-      - name: Delete D1 database
-        continue-on-error: true
-        run: |
-          echo "🗑 Deleting D1 database: ${DB_NAME}"
-          echo 'y' | wrangler d1 delete "$DB_NAME" --skip-confirmation 2>&1 || {
-            echo "⚠ D1 deletion failed or database did not exist — continuing"
-          }
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-
-      # Notify cleanup completion to Discord
+      # Notify cleanup to Discord (temporary account expires automatically)
       - name: Notify cleanup to Discord
-        if: always()
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
@@ -68,11 +26,11 @@ jobs:
           {
             "embeds": [{
               "title": "🧹 Preview environment cleaned up",
-              "description": "📋 **#${PR_NUMBER}** ${PR_TITLE}\n\n- Worker: \`${WORKER_NAME}\`\n- D1: \`${DB_NAME}\`",
+              "description": "📋 **#${PR_NUMBER}** ${PR_TITLE}\n\nTemporary account has expired or will expire automatically.",
               "color": 10070709,
               "footer": { "text": "sorou PR Preview Cleanup" }
             }]
           }
           EOF
           )"
-          echo "✅ Sent notification to Discord"
+          echo "Sent notification to Discord"

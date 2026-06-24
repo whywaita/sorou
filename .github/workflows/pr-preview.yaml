@@ -11,21 +11,16 @@ concurrency:
   group: preview-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
-env:
-  PR_NUMBER: ${{ github.event.pull_request.number }}
-  WORKER_NAME: sorou-pr-${{ github.event.pull_request.number }}
-  DB_NAME: sorou-pr-${{ github.event.pull_request.number }}-db
-
 jobs:
   deploy-preview:
     runs-on: ubuntu-latest
-    # Skip forked PRs (no access to secrets)
+    # Skip forked PRs (no access to DISCORD_WEBHOOK_URL secret)
     if: github.event.pull_request.head.repo.fork == false
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: "22"
 
@@ -43,73 +38,50 @@ jobs:
       - name: Run tests
         run: npm test
 
-      # Recreate D1 database (fresh DB each deploy)
-      - name: Recreate D1 database
+      # Create D1 database in temporary account
+      - name: Create D1 database
         id: d1
         run: |
-          set -e
-          # Delete existing DB if present
-          if wrangler d1 info "$DB_NAME" > /dev/null 2>&1; then
-            echo "🗑 Deleting existing D1 database '${DB_NAME}'"
-            echo 'y' | wrangler d1 delete "$DB_NAME" --skip-confirmation 2>&1 || true
-          fi
-          # Create new DB
-          echo "🆕 Creating D1 database '${DB_NAME}'"
-          CREATE_OUT=$(echo 'y' | wrangler d1 create "$DB_NAME" 2>&1)
+          CREATE_OUT=$(wrangler d1 create sorou-db --temporary 2>&1) || true
           echo "$CREATE_OUT"
           DB_ID=$(echo "$CREATE_OUT" | grep -oP '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' | head -1)
           if [ -z "$DB_ID" ]; then
-            echo "❌ Failed to extract database ID from output"
+            echo "Failed to extract database ID"
             exit 1
           fi
-          echo "   database_id = ${DB_ID}"
           echo "db_id=${DB_ID}" >> "$GITHUB_OUTPUT"
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       # Apply D1 migrations
       - name: Apply D1 migrations
         run: |
           set -e
           for f in ./drizzle/migrations/*.sql; do
-            echo "▶ Running migration: $f"
-            wrangler d1 execute "$DB_NAME" --remote --file="$f"
+            echo "Running migration: $f"
+            wrangler d1 execute sorou-db --remote --file="$f" --temporary
           done
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
-      # Generate PR-specific wrangler config (replace placeholders in template)
-      - name: Generate PR-specific wrangler config
+      # Generate wrangler config from template
+      - name: Generate wrangler config
         run: |
-          CONFIG="wrangler.pr-${PR_NUMBER}.toml"
-          sed -e "s/__WORKER_NAME__/${WORKER_NAME}/g" \
-              -e "s/__D1_NAME__/${DB_NAME}/g" \
+          sed -e "s/__WORKER_NAME__/sorou-preview/g" \
+              -e "s/__D1_NAME__/sorou-db/g" \
               -e "s/__D1_ID__/${{ steps.d1.outputs.db_id }}/g" \
-              wrangler.pr.toml > "$CONFIG"
-          echo "Generated $CONFIG"
-          cat "$CONFIG"
+              wrangler.pr.toml > wrangler.preview.toml
+          cat wrangler.preview.toml
 
-      # Deploy Worker
+      # Deploy Worker to temporary account
       - name: Deploy to Cloudflare Workers
         id: deploy
         run: |
-          CONFIG="wrangler.pr-${PR_NUMBER}.toml"
-          DEPLOY_OUTPUT=$(wrangler deploy --config "$CONFIG" 2>&1)
+          DEPLOY_OUTPUT=$(wrangler deploy --config wrangler.preview.toml --temporary 2>&1)
           echo "$DEPLOY_OUTPUT"
 
-          # Extract workers.dev URL
           PREVIEW_URL=$(echo "$DEPLOY_OUTPUT" | grep -oP 'https://[a-zA-Z0-9._-]+\.workers\.dev' | head -1)
           if [ -z "$PREVIEW_URL" ]; then
-            echo "⚠ Could not extract workers.dev URL from deploy output"
+            echo "Could not extract workers.dev URL from deploy output"
             PREVIEW_URL="(URL could not be determined — check Actions log)"
           fi
           echo "preview_url=${PREVIEW_URL}" >> "$GITHUB_OUTPUT"
-          echo "🔗 ${PREVIEW_URL}"
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       # Get PR title for Discord notification
       - name: Get PR title
@@ -135,11 +107,11 @@ jobs:
           {
             "embeds": [{
               "title": "🚀 Preview environment deployed",
-              "description": "🔗 ${PREVIEW_URL}\n\n📋 **#${PR_NUMBER}** ${PR_TITLE}\n🌿 \`${BRANCH}\`",
+              "description": "🔗 ${PREVIEW_URL}\n\n📋 **#${PR_NUMBER}** ${PR_TITLE}\n🌿 \`${BRANCH}\`\n⏳ Temporary account (expires in 60 min)",
               "color": 5763719,
               "footer": { "text": "sorou PR Preview" }
             }]
           }
           EOF
           )"
-          echo "✅ Sent notification to Discord"
+          echo "Sent notification to Discord"

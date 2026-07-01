@@ -8,6 +8,10 @@ export function EventPage(props: {
   errors?: Record<string, string[]>;
   edit?: { name: string; comment: string; statuses: Record<number, string> };
   isCreator?: boolean;
+  /** Whether the current browser has a valid admin session. */
+  isAdmin?: boolean;
+  /** Whether admin mode is currently active. */
+  isAdminMode?: boolean;
 }) {
   const {
     event: ev,
@@ -15,9 +19,13 @@ export function EventPage(props: {
     errors: e = {},
     edit,
     isCreator = false,
+    isAdmin = false,
+    isAdminMode = false,
   } = props;
   const responses = ev.responses ?? [];
   const latestCounts = computeCounts(ev.candidates, responses);
+  // Admin controls: show when admin mode is active
+  const showAdminControls = isAdmin && isAdminMode;
 
   return (
     <Layout
@@ -27,17 +35,52 @@ export function EventPage(props: {
       ogImage={`${getOrigin(shareUrl)}/e/ogp.png?id=${ev.id}`}
       currentUrl={props.currentUrl}
       noindex
+      isAdminMode={isAdminMode}
     >
       <div class="flex items-start justify-between mb-1">
         <h1 class="text-2xl font-bold">{escapeHtml(ev.name)}</h1>
-        {isCreator && (
-          <a
-            href={`/e?id=${ev.id}&action=edit`}
-            class="shrink-0 ml-4 px-3 py-1.5 border border-slate-300 rounded-md text-sm text-slate-600 hover:bg-slate-50 hover:text-brand transition"
-          >
-            イベントを編集
-          </a>
-        )}
+        <div class="flex items-center gap-2 shrink-0 ml-4">
+          {isCreator && (
+            <a
+              href={`/e?id=${ev.id}&action=edit`}
+              class="px-3 py-1.5 border border-slate-300 rounded-md text-sm text-slate-600 hover:bg-slate-50 hover:text-brand transition"
+            >
+              イベントを編集
+            </a>
+          )}
+          {showAdminControls && !isCreator && (
+            <>
+              <a
+                href={`/admin/events/${ev.id}/edit`}
+                class="px-3 py-1.5 border border-amber-400 rounded-md text-sm text-amber-700 hover:bg-amber-50 transition"
+              >
+                編集
+              </a>
+              <form
+                method="post"
+                action={`/admin/events/${ev.id}/delete`}
+                onsubmit="return confirm('本当にこのイベントを削除しますか？この操作は取り消せません。')"
+              >
+                <button
+                  type="submit"
+                  class="px-3 py-1.5 border border-red-300 rounded-md text-sm text-red-600 hover:bg-red-50 transition"
+                >
+                  削除
+                </button>
+              </form>
+            </>
+          )}
+          {!isCreator && !showAdminControls && isAdmin && (
+            <form method="post" action="/admin/mode">
+              <button
+                type="submit"
+                class="px-3 py-1.5 border border-amber-300 bg-amber-50 rounded-md text-sm text-amber-700 hover:bg-amber-100 transition"
+              >
+                管理者になる
+              </button>
+            </form>
+          )}
+        </div>
       </div>
       {ev.memo && (
         <p class="text-slate-500 text-sm mb-6">{escapeHtml(ev.memo)}</p>

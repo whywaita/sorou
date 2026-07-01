@@ -2,7 +2,9 @@ import { getCookie, setCookie } from "hono/cookie";
 import type { Context } from "hono";
 
 const COOKIE_NAME = "admin_session";
+const MODE_COOKIE_NAME = "admin_mode_active";
 const MAX_AGE = 86400; // 24 hours
+const MODE_MAX_AGE = 3600; // 1 hour for admin mode (auto-expire)
 
 let _adminPassword = "";
 
@@ -46,6 +48,40 @@ export async function isAdmin(c: Context): Promise<boolean> {
   const password = getAdminPassword()!;
   const expectedHash = await sha256(password);
   return cookie === expectedHash;
+}
+
+/**
+ * Admin mode — a temporary opt-in flag separate from the admin session.
+ * Inspired by: "管理者に「なる」ボタンを作った" (id:onk)
+ * Having an admin session means you CAN be admin; admin mode means you ARE
+ * currently operating as one.  Permission checks require both.
+ */
+
+/** Activate admin mode (sets a short-lived cookie). */
+export function setAdminModeCookie(c: Context): void {
+  setCookie(c, MODE_COOKIE_NAME, "1", {
+    httpOnly: true,
+    secure: true,
+    sameSite: "Lax",
+    maxAge: MODE_MAX_AGE,
+    path: "/",
+  });
+}
+
+/** Deactivate admin mode (clear the cookie). */
+export function clearAdminModeCookie(c: Context): void {
+  setCookie(c, MODE_COOKIE_NAME, "", {
+    httpOnly: true,
+    secure: true,
+    sameSite: "Lax",
+    maxAge: 0,
+    path: "/",
+  });
+}
+
+/** Check if admin mode is currently active. */
+export function isAdminModeActive(c: Context): boolean {
+  return getCookie(c, MODE_COOKIE_NAME) === "1";
 }
 
 async function sha256(message: string): Promise<string> {

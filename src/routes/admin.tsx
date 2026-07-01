@@ -8,12 +8,15 @@ import {
   isAdmin,
   verifyPassword,
   setSessionCookie,
+  setAdminModeCookie,
+  clearAdminModeCookie,
 } from "../lib/session";
 import { createEventSchema } from "../lib/validation";
 import { AdminLoginPage, AdminEventList } from "../views/admin";
 import { EditEventPage } from "../views/edit";
 import { NotFoundPage } from "../views/error";
 import { loadEvent } from "./web";
+import { isAdminModeActive } from "../lib/session";
 
 const admin = new Hono<{ Bindings: { DB: D1Database } }>();
 
@@ -46,8 +49,11 @@ admin.use("/admin/*", async (c, next) => {
 
 // GET /admin
 admin.get("/admin", async (c) => {
+  const adminMode = isAdminModeActive(c);
   if (!(await isAdmin(c))) {
-    return c.html(<AdminLoginPage currentUrl={currentUrl(c)} />);
+    return c.html(
+      <AdminLoginPage currentUrl={currentUrl(c)} isAdminMode={adminMode} />,
+    );
   }
 
   const db = createDB(c.env.DB);
@@ -100,6 +106,7 @@ admin.get("/admin", async (c) => {
       currentUrl={currentUrl(c)}
       events={list}
       query={query || undefined}
+      isAdminMode={adminMode}
     />,
   );
 });
@@ -114,6 +121,7 @@ admin.post("/admin/login", async (c) => {
       <AdminLoginPage
         currentUrl={currentUrl(c)}
         error="パスワードが違います"
+        isAdminMode={isAdminModeActive(c)}
       />,
     );
   }
@@ -164,6 +172,7 @@ admin.get("/admin/events/:id/edit", async (c) => {
       currentUrl={currentUrl(c)}
       shareUrl={`${getDomain(c)}/e?id=${eventId}`}
       isAdmin
+      isAdminMode={isAdminModeActive(c)}
     />,
   );
 });
@@ -202,6 +211,7 @@ admin.post("/admin/events/:id/edit", async (c) => {
           dates: body.dates as string,
         }}
         isAdmin
+        isAdminMode={isAdminModeActive(c)}
       />,
     );
   }
@@ -224,6 +234,26 @@ admin.post("/admin/events/:id/edit", async (c) => {
   }
 
   return c.redirect("/admin");
+});
+
+// ─── Admin mode toggle ─────────────────────────────────────────────
+
+// POST /admin/mode — activate admin mode (become admin)
+admin.post("/admin/mode", async (c) => {
+  if (!(await isAdmin(c))) {
+    return c.redirect("/");
+  }
+  setAdminModeCookie(c);
+  // Redirect back to the referring page, or home
+  const referer = c.req.header("referer");
+  return c.redirect(referer || "/");
+});
+
+// POST /admin/mode/exit — deactivate admin mode
+admin.post("/admin/mode/exit", async (c) => {
+  clearAdminModeCookie(c);
+  const referer = c.req.header("referer");
+  return c.redirect(referer || "/");
 });
 
 export default admin;

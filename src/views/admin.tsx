@@ -1,11 +1,16 @@
 import { Layout } from "./layout";
 
-export function AdminLoginPage(props: { currentUrl: string; error?: string }) {
+export function AdminLoginPage(props: {
+  currentUrl: string;
+  error?: string;
+  isAdminMode?: boolean;
+}) {
   return (
     <Layout
       title="管理画面"
       description="sorou 管理画面 — イベントの管理・削除"
       currentUrl={props.currentUrl}
+      isAdminMode={props.isAdminMode ?? false}
     >
       <h1 class="text-2xl font-bold mb-6">管理画面</h1>
       <form
@@ -56,12 +61,14 @@ export function AdminEventList(props: {
     responseCount: number;
   }[];
   query?: string;
+  isAdminMode?: boolean;
 }) {
   return (
     <Layout
       title="管理画面"
       description="sorou 管理画面 — イベントの管理・削除"
       currentUrl={props.currentUrl}
+      isAdminMode={props.isAdminMode ?? false}
     >
       <h1 class="text-2xl font-bold mb-6">管理画面</h1>
 

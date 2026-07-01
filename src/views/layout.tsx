@@ -9,6 +9,8 @@ interface LayoutProps {
   currentUrl: string;
   /** If true, adds <meta name="robots" content="noindex"> to prevent search engines from indexing the page. */
   noindex?: boolean;
+  /** If true, shows the admin mode banner. */
+  isAdminMode?: boolean;
   children: unknown;
 }
 
@@ -92,6 +94,25 @@ export const Layout = (props: LayoutProps) => {
             >
           </div>
         </header>
+        ${props.isAdminMode
+          ? html`<div
+              class="bg-amber-400 border-b border-amber-500 text-amber-900"
+            >
+              <div
+                class="max-w-3xl mx-auto px-4 py-2 flex items-center justify-between text-sm font-medium"
+              >
+                <span>⚠️ 管理者モード</span>
+                <form method="post" action="/admin/mode/exit">
+                  <button
+                    type="submit"
+                    class="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded text-xs transition"
+                  >
+                    管理者モードを終了
+                  </button>
+                </form>
+              </div>
+            </div>`
+          : ""}
         <main class="max-w-3xl mx-auto px-4 py-8">${props.children}</main>
         <footer class="text-center text-slate-400 text-sm py-6 space-y-1">
           <p>sorou — シンプルな日程調整ツール</p>

@@ -11,6 +11,7 @@ import { PrivacyPage } from "../views/privacy";
 import { TermsPage } from "../views/terms";
 import { renderOgpImage } from "../lib/ogp";
 import { getOrCreateCreatorTokenHash, isCreator } from "../lib/creator";
+import { isAdmin, isAdminModeActive } from "../lib/session";
 import { eq, and } from "drizzle-orm";
 import type { Event } from "../types";
 
@@ -38,8 +39,16 @@ function currentUrl(c: {
 // ─── Top page ─────────────────────────────────────────────────────
 
 // GET /
-web.get("/", (c) => {
-  return c.html(<TopPage currentUrl={currentUrl(c)} />);
+web.get("/", async (c) => {
+  const adminFlag = await isAdmin(c);
+  const adminMode = adminFlag && isAdminModeActive(c);
+  return c.html(
+    <TopPage
+      currentUrl={currentUrl(c)}
+      isAdmin={adminFlag}
+      isAdminMode={adminMode}
+    />,
+  );
 });
 
 // POST /events
@@ -62,6 +71,8 @@ web.post("/events", async (c) => {
           memo: body.memo as string,
           dates: body.dates as string,
         }}
+        isAdmin={await isAdmin(c)}
+        isAdminMode={isAdminModeActive(c)}
       />,
     );
   }
@@ -114,6 +125,7 @@ web.get("/e", async (c) => {
         event={event}
         currentUrl={currentUrl(c)}
         shareUrl={`${getDomain(c)}/e?id=${id}`}
+        isAdminMode={isAdminModeActive(c)}
       />,
     );
   }
@@ -122,6 +134,8 @@ web.get("/e", async (c) => {
   const editParam = c.req.query("edit");
   const editData = editParam ? getEditData(event, editParam) : undefined;
   const creatorFlag = await isCreator(c, event.creatorTokenHash);
+  const adminFlag = await isAdmin(c);
+  const adminMode = adminFlag && isAdminModeActive(c);
 
   return c.html(
     <EventPage
@@ -130,6 +144,8 @@ web.get("/e", async (c) => {
       currentUrl={currentUrl(c)}
       edit={editData}
       isCreator={creatorFlag}
+      isAdmin={adminFlag}
+      isAdminMode={adminMode}
     />,
   );
 });
@@ -188,6 +204,7 @@ web.post("/e", async (c) => {
             memo: body.memo as string,
             dates: body.dates as string,
           }}
+          isAdminMode={isAdminModeActive(c)}
         />,
       );
     }
@@ -244,6 +261,8 @@ web.post("/e", async (c) => {
 
   if (Object.keys(errors).length > 0) {
     const creatorFlag = await isCreator(c, event.creatorTokenHash);
+    const adminFlag = await isAdmin(c);
+    const adminMode = adminFlag && isAdminModeActive(c);
     return c.html(
       <EventPage
         event={event}
@@ -256,6 +275,8 @@ web.post("/e", async (c) => {
           statuses: statusMap,
         }}
         isCreator={creatorFlag}
+        isAdmin={adminFlag}
+        isAdminMode={adminMode}
       />,
     );
   }

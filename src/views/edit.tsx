@@ -9,8 +9,11 @@ export function EditEventPage(props: {
   values?: { name?: string; memo?: string; dates?: string };
   /** Admin mode: form POST targets the admin routes instead of the creator routes. */
   isAdmin?: boolean;
+  /** Whether admin mode is currently active (shows banner). */
+  isAdminMode?: boolean;
 }) {
   const { event: ev, errors: e = {}, values: v = {}, isAdmin = false } = props;
+  const isAdminMode = props.isAdminMode ?? false;
   const editAction = isAdmin
     ? `/admin/events/${ev.id}/edit`
     : `/e?id=${ev.id}&action=edit`;
@@ -27,6 +30,7 @@ export function EditEventPage(props: {
       title={`${ev.name} を編集`}
       description={`${ev.name} のイベント情報を編集`}
       currentUrl={props.currentUrl}
+      isAdminMode={isAdminMode}
     >
       <div class="flex items-center justify-between mb-6">
         <h1 class="text-2xl font-bold">イベントを編集</h1>

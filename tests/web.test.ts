@@ -177,3 +177,50 @@ describe("管理画面（ADMIN_PASSWORD 未設定時は無効化 F-27）", () =>
     expect(res.status).toBe(404);
   });
 });
+
+// ─── Admin mode toggle (F-32) ──────────────────────────────────────
+
+describe("管理者モード切替（ADMIN_PASSWORD 設定時）", () => {
+  const adminEnv = { DB: mockEmptyD1(), ADMIN_PASSWORD: "test-password" };
+
+  it("POST /admin/mode は admin 未ログイン時に / にリダイレクト", async () => {
+    const res = await app.request(
+      "/admin/mode",
+      { method: "POST" },
+      adminEnv,
+    );
+    expect(res.status).toBe(302);
+    expect(res.headers.get("location")).toBe("/");
+  });
+
+  it("POST /admin/mode/exit は常にリダイレクト（認証不要）", async () => {
+    const res = await app.request(
+      "/admin/mode/exit",
+      { method: "POST" },
+      adminEnv,
+    );
+    expect(res.status).toBe(302);
+    // Set-Cookie で admin_mode_active が空（削除）になる
+    const setCookie = res.headers.get("set-cookie") || "";
+    expect(setCookie).toContain("admin_mode_active=;");
+  });
+});
+
+describe("管理者モード UI（ADMIN_PASSWORD 未設定時）", () => {
+  it("トップページに「管理者になる」ボタンは表示されない", async () => {
+    const res = await app.request("/", {}, env);
+    const body = await res.text();
+    expect(body).not.toContain("管理者になる");
+  });
+
+  it("イベントページに「管理者になる」ボタンは表示されない（404でも）", async () => {
+    const res = await app.request("/e?id=nonexistent", {}, env);
+    expect(res.status).toBe(404);
+  });
+
+  it("レイアウトに管理者モードバナーは表示されない", async () => {
+    const res = await app.request("/", {}, env);
+    const body = await res.text();
+    expect(body).not.toContain("管理者モード");
+  });
+});

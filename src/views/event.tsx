@@ -36,6 +36,7 @@ export function EventPage(props: {
       currentUrl={props.currentUrl}
       noindex
       isAdminMode={isAdminMode}
+      isAdmin={isAdmin}
     >
       <div class="flex items-start justify-between mb-1">
         <h1 class="text-2xl font-bold">{escapeHtml(ev.name)}</h1>
@@ -69,16 +70,6 @@ export function EventPage(props: {
                 </button>
               </form>
             </>
-          )}
-          {!isCreator && !showAdminControls && isAdmin && (
-            <form method="post" action="/admin/mode">
-              <button
-                type="submit"
-                class="px-3 py-1.5 border border-amber-300 bg-amber-50 rounded-md text-sm text-amber-700 hover:bg-amber-100 transition"
-              >
-                管理者になる
-              </button>
-            </form>
           )}
         </div>
       </div>

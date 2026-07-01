@@ -18,20 +18,8 @@ export function TopPage(props: {
       description="sorou - シンプルな日程調整ツール"
       currentUrl={props.currentUrl}
       isAdminMode={isAdminMode}
+      isAdmin={isAdmin}
     >
-      {/* Admin mode / become-admin controls */}
-      {isAdminMode ? null : isAdmin ? (
-        <div class="mb-6 flex justify-end">
-          <form method="post" action="/admin/mode">
-            <button
-              type="submit"
-              class="px-3 py-1.5 border border-amber-300 bg-amber-50 rounded-md text-sm text-amber-700 hover:bg-amber-100 transition"
-            >
-              管理者になる
-            </button>
-          </form>
-        </div>
-      ) : null}
       <h1 class="text-2xl font-bold mb-6">新しいイベントを作成</h1>
       <form
         method="post"

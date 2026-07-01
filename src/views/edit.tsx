@@ -31,6 +31,7 @@ export function EditEventPage(props: {
       description={`${ev.name} のイベント情報を編集`}
       currentUrl={props.currentUrl}
       isAdminMode={isAdminMode}
+      isAdmin={isAdmin}
     >
       <div class="flex items-center justify-between mb-6">
         <h1 class="text-2xl font-bold">イベントを編集</h1>

@@ -9,8 +9,10 @@ interface LayoutProps {
   currentUrl: string;
   /** If true, adds <meta name="robots" content="noindex"> to prevent search engines from indexing the page. */
   noindex?: boolean;
-  /** If true, shows the admin mode banner. */
+  /** Whether admin mode is currently active (shows colored header). */
   isAdminMode?: boolean;
+  /** Whether the user has an admin session (shows 「管理者になる」button when not in mode). */
+  isAdmin?: boolean;
   children: unknown;
 }
 
@@ -114,7 +116,16 @@ export const Layout = (props: LayoutProps) => {
                     終了
                   </button>
                 </form>`
-              : ""}
+              : props.isAdmin
+                ? html`<form method="post" action="/admin/mode">
+                    <button
+                      type="submit"
+                      class="px-3 py-1 border border-amber-300 bg-amber-50 rounded text-xs text-amber-700 hover:bg-amber-100 transition"
+                    >
+                      管理者になる
+                    </button>
+                  </form>`
+                : ""}
           </div>
         </header>
         <main class="max-w-3xl mx-auto px-4 py-8">${props.children}</main>

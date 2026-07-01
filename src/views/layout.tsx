@@ -83,36 +83,40 @@ export const Layout = (props: LayoutProps) => {
         </script>
       </head>
       <body class="bg-slate-50 text-slate-800 min-h-screen">
-        <header class="bg-white border-b border-slate-200 shadow-sm">
+        <header
+          class="${props.isAdminMode
+            ? "bg-amber-400 border-b border-amber-500"
+            : "bg-white border-b border-slate-200"} shadow-sm"
+        >
           <div
             class="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between"
           >
-            <a
-              href="/"
-              class="text-xl font-bold text-brand hover:text-brand-hover"
-              >sorou</a
-            >
-          </div>
-        </header>
-        ${props.isAdminMode
-          ? html`<div
-              class="bg-amber-400 border-b border-amber-500 text-amber-900"
-            >
-              <div
-                class="max-w-3xl mx-auto px-4 py-2 flex items-center justify-between text-sm font-medium"
+            <div class="flex items-center gap-4">
+              <a
+                href="/"
+                class="text-xl font-bold ${props.isAdminMode
+                  ? "text-amber-900"
+                  : "text-brand hover:text-brand-hover"}"
+                >sorou</a
               >
-                <span>⚠️ 管理者モード</span>
-                <form method="post" action="/admin/mode/exit">
+              ${props.isAdminMode
+                ? html`<span class="text-sm font-medium text-amber-900"
+                    >⚠️ 管理者モード</span
+                  >`
+                : ""}
+            </div>
+            ${props.isAdminMode
+              ? html`<form method="post" action="/admin/mode/exit">
                   <button
                     type="submit"
                     class="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded text-xs transition"
                   >
-                    管理者モードを終了
+                    終了
                   </button>
-                </form>
-              </div>
-            </div>`
-          : ""}
+                </form>`
+              : ""}
+          </div>
+        </header>
         <main class="max-w-3xl mx-auto px-4 py-8">${props.children}</main>
         <footer class="text-center text-slate-400 text-sm py-6 space-y-1">
           <p>sorou — シンプルな日程調整ツール</p>

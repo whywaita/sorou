@@ -111,6 +111,18 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
+      # Generate random ADMIN_PASSWORD and set as Worker secret
+      - name: Set ADMIN_PASSWORD secret
+        id: admin_pw
+        run: |
+          PASSWORD=$(openssl rand -hex 8)
+          echo "password=${PASSWORD}" >> "$GITHUB_OUTPUT"
+          echo "$PASSWORD" | wrangler secret put ADMIN_PASSWORD --config "wrangler.pr-${PR_NUMBER}.toml"
+          echo "✅ ADMIN_PASSWORD set for ${WORKER_NAME}"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
       # Get PR title for Discord notification
       - name: Get PR title
         id: pr_info
@@ -126,6 +138,7 @@ jobs:
           PREVIEW_URL: ${{ steps.deploy.outputs.preview_url }}
           PR_TITLE: ${{ steps.pr_info.outputs.pr_title }}
           BRANCH: ${{ github.event.pull_request.head.ref }}
+          ADMIN_PASSWORD: ${{ steps.admin_pw.outputs.password }}
         run: |
           PR_NUMBER="${{ github.event.pull_request.number }}"
 
@@ -135,7 +148,7 @@ jobs:
           {
             "embeds": [{
               "title": "🚀 Preview environment deployed",
-              "description": "🔗 ${PREVIEW_URL}\n\n📋 **#${PR_NUMBER}** ${PR_TITLE}\n🌿 \`${BRANCH}\`",
+              "description": "🔗 ${PREVIEW_URL}\n🔑 **Admin**: ${PREVIEW_URL}/admin\n⏤ ⏤ ⏤ ⏤\n🔐 Password: \`${ADMIN_PASSWORD}\`\n\n📋 **#${PR_NUMBER}** ${PR_TITLE}\n🌿 \`${BRANCH}\`",
               "color": 5763719,
               "footer": { "text": "sorou PR Preview" }
             }]

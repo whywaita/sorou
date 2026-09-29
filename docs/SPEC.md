@@ -652,8 +652,9 @@ sorou/
 │   └── sorou.ts                     # AI Agent 向け CLI
 ├── static/
 │   └── style.css                    # Tailwind CSS 出力
-├── wrangler.toml
-├── wrangler.pr.toml                 # PR preview 用テンプレート（worker名/D1 ID はプレースホルダ）
+├── cloudflare.config.ts             # Worker 定義（cf CLI）
+├── wrangler.config.ts               # Wrangler に委譲するビルド設定
+├── wrangler.toml                    # 本番デプロイ（deploy.yaml）が Wrangler 経由で使用中
 ├── drizzle.config.ts
 ├── tailwind.config.js
 ├── tsconfig.json
@@ -742,29 +743,34 @@ jobs:
     runs-on: ubuntu-latest
     concurrency: preview-${{ github.event.pull_request.number }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: '20' }
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with: { node-version: '22' }
       - run: npm ci
       - run: npm test
       - run: npx tsc --noEmit
       - name: Create D1 database
+        id: d1
         run: |
-          wrangler d1 create "sorou-pr-${{ github.event.pull_request.number }}-db"
-      - name: Apply D1 migrations
-        run: |
-          for f in ./drizzle/migrations/*.sql; do
-            wrangler d1 execute "sorou-pr-${{ github.event.pull_request.number }}-db" --remote --file="$f"
-          done
-      - name: Generate wrangler config & deploy
-        run: |
-          sed -e "s/__WORKER_NAME__/sorou-pr-${{ github.event.pull_request.number }}/g" \
-              -e "s/__D1_NAME__/sorou-pr-${{ github.event.pull_request.number }}-db/g" \
-              wrangler.pr.toml > wrangler.pr.tmp.toml
-          wrangler deploy --config wrangler.pr.tmp.toml
+          db_id=$(npx cf d1 create --name "sorou-pr-${{ github.event.pull_request.number }}-db" | jq -r '.result.uuid')
+          echo "db_id=${db_id}" >> "$GITHUB_OUTPUT"
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      - name: Apply D1 migrations
+        run: |
+          npx cf d1 migrations apply "${{ steps.d1.outputs.db_id }}" --dir ./drizzle/migrations
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      - name: Deploy Worker Preview
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          SOROU_PREVIEW_DB_NAME: sorou-pr-${{ github.event.pull_request.number }}-db
+          SOROU_PREVIEW_DB_ID: ${{ steps.d1.outputs.db_id }}
+        run: |
+          npx cf previews deploy "pr-${{ github.event.pull_request.number }}"
 ```
 
 ```yaml
@@ -777,12 +783,11 @@ jobs:
   cleanup-preview:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: '20' }
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with: { node-version: '22' }
       - run: npm ci
-      - run: wrangler delete "sorou-pr-${{ github.event.pull_request.number }}" --force
-      - run: wrangler d1 delete "sorou-pr-${{ github.event.pull_request.number }}-db" --skip-confirmation
+      - run: npx cf d1 delete <database-id> --force
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

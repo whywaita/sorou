@@ -8,7 +8,7 @@ on:
 
 env:
   PR_NUMBER: ${{ github.event.pull_request.number }}
-  WORKER_NAME: sorou-pr-${{ github.event.pull_request.number }}
+  PREVIEW_NAME: pr-${{ github.event.pull_request.number }}
   DB_NAME: sorou-pr-${{ github.event.pull_request.number }}-db
 
 jobs:
@@ -17,42 +17,40 @@ jobs:
     # Skip forked PRs (no deployments created)
     if: github.event.pull_request.head.repo.fork == false
 
-    steps:
-      - uses: actions/checkout@v4
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
-      - uses: actions/setup-node@v4
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: "22"
 
       - run: npm ci
 
-      # Add wrangler to PATH
-      - name: Add node_modules/.bin to PATH
-        run: echo "$PWD/node_modules/.bin" >> "$GITHUB_PATH"
-
-      # Delete Worker
-      - name: Delete Cloudflare Worker
-        continue-on-error: true
-        run: |
-          echo "🗑 Deleting worker: ${WORKER_NAME}"
-          wrangler delete "$WORKER_NAME" --force 2>&1 || {
-            echo "⚠ Worker deletion failed or worker did not exist — continuing"
-          }
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-
-      # Delete D1 database
+      # Worker Previews cannot be deleted with the cf CLI (beta) or the API
+      # today, so only the per-PR database is removed here. The Preview itself
+      # stays attached to the `sorou` Worker; delete it from the dashboard
+      # (Workers > sorou > Previews) when cleaning up.
       - name: Delete D1 database
         continue-on-error: true
         run: |
+          set -euo pipefail
+
           echo "🗑 Deleting D1 database: ${DB_NAME}"
-          echo 'y' | wrangler d1 delete "$DB_NAME" --skip-confirmation 2>&1 || {
-            echo "⚠ D1 deletion failed or database did not exist — continuing"
+          db_id=$(npx --no-install cf d1 list | jq -r --arg name "$DB_NAME" \
+            'if type == "object" and has("result") then .result else . end
+             | (if type == "array" then . else [] end)
+             | .[] | select(.name == $name) | (.uuid // .id // empty)' | head -1 || true)
+          if [ -z "$db_id" ]; then
+            echo "⚠ D1 database '${DB_NAME}' not found — continuing"
+            exit 0
+          fi
+          npx --no-install cf d1 delete "$db_id" --force || {
+            echo "⚠ D1 deletion failed — continuing"
           }
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       # Notify cleanup completion to Discord
       - name: Notify cleanup to Discord
@@ -60,15 +58,13 @@ jobs:
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
-          PR_NUMBER="${{ github.event.pull_request.number }}"
-
           curl -s -X POST "${{ secrets.DISCORD_WEBHOOK_URL }}" \
             -H "Content-Type: application/json" \
             -d "$(cat <<EOF
           {
             "embeds": [{
               "title": "🧹 Preview environment cleaned up",
-              "description": "📋 **#${PR_NUMBER}** ${PR_TITLE}\n\n- Worker: \`${WORKER_NAME}\`\n- D1: \`${DB_NAME}\`",
+              "description": "📋 **#${PR_NUMBER}** ${PR_TITLE}\n\n- Preview: \`${PREVIEW_NAME}\` (kept, delete from the dashboard)\n- D1: \`${DB_NAME}\`",
               "color": 10070709,
               "footer": { "text": "sorou PR Preview Cleanup" }
             }]

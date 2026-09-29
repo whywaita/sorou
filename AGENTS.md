@@ -33,12 +33,13 @@ AI エージェント／コントリビューター向けの作業ガイド。�
 
 ## cf CLI への移行（進行中）
 
-Cloudflare の新しい CLI `cf` に段階的に移行している。現時点では設定ファイルのみ移行済みで、CI はまだ Wrangler 経由で動いている。
+Cloudflare の新しい CLI `cf` に段階的に移行している。設定と PR プレビューは cf に移行済みで、本番デプロイ（`deploy.yaml`）はまだ Wrangler 経由で動いている。
 
 - 設定: `cloudflare.config.ts`（Worker 本体の定義）+ `wrangler.config.ts`（Wrangler に委譲するビルド設定）
 - ローカル実行: `npx cf dev` / `npx cf deploy --dry-run` / `npx cf build`
-- `wrangler.toml` は `deploy.yaml` / `pr-preview.yaml` が Wrangler を使っているため当面残す。**値を変更する場合は `cloudflare.config.ts` と揃えること**（cf は `wrangler.toml` を読まない）
-- 依存: `cf`（beta）と `wrangler` >= 4.136（cf の build / dev / deploy が要求）、`@cloudflare/workers-types` v5
+- PR プレビュー: `cf previews deploy pr-<N>`。プレビュー用 D1 は `SOROU_PREVIEW_DB_NAME` / `SOROU_PREVIEW_DB_ID` で `cloudflare.config.ts` に渡す（未設定だとプレビューのビルドは失敗する）
+- `wrangler.toml` は `deploy.yaml` がまだ Wrangler を使っているため残している。**値を変更する場合は `cloudflare.config.ts` と揃えること**（cf は `wrangler.toml` を読まない）
+- 依存: `cf`（beta）と `wrangler` >= 4.136（cf の build / dev / deploy / previews が要求）、`@cloudflare/workers-types` v5
 
 
 ## 開発ルール

@@ -440,26 +440,28 @@ wrangler deploy
 
 ### PR プレビュー環境
 
-PR ごとに独立したテスト環境を自動デプロイする。`.github/workflows/pr-preview.yaml` により、PR の open / push 時に以下のフローで展開される。
+PR ごとに独立したテスト環境を、Cloudflare の Worker Previews（`cf previews deploy`）でデプロイする。`.github/workflows/pr-preview.yaml` により、PR の open / push 時に以下のフローで展開される。
 
 ```
 PR #N open ─→ D1 作成 (sorou-pr-N-db) ─→ マイグレーション適用
-          ─→ wrangler.pr-N.toml を動的生成（worker名 + D1 ID を差し替え）
-          ─→ wrangler deploy ─→ https://sorou-pr-N.<subdomain>.workers.dev
+          ─→ cf previews deploy pr-N（プレビュー用 D1 を環境変数で注入）
+          ─→ Preview URL（workers.dev）を Discord に通知
 ```
 
-PR close 時は `.github/workflows/pr-preview-cleanup.yaml` が Worker と D1 を削除する。
+PR close 時は `.github/workflows/pr-preview-cleanup.yaml` が D1 を削除する。Worker Preview 自体は cf CLI（1.0.0-beta 時点）では削除できないため、ダッシュボード（Workers > sorou > Previews）から削除する。
 
 **構成**:
 
 | 項目 | 本番 | プレビュー |
 |------|------|-----------|
-| Worker 名 | `sorou` | `sorou-pr-<N>` |
-| D1 | `sorou-db` | `sorou-pr-<N>-db` |
-| wrangler config | `wrangler.toml` | `wrangler.pr.toml` テンプレートから動的生成 |
-| URL | カスタムドメイン + workers.dev (非公開) | `workers.dev` サブドメイン |
+| Worker | `sorou` | `sorou` の Worker Preview（preview 名 `pr-<N>`） |
+| D1 | `sorou-db` | `sorou-pr-<N>-db`（push ごとに作り直し） |
+| config | `cloudflare.config.ts` | 同じ config を `isPreview` で分岐 |
+| URL | カスタムドメイン + workers.dev (非公開) | Preview URL（`workers.dev` サブドメイン） |
 
 **注意点**:
+- プレビューは本番の binding を継承しない。`cloudflare.config.ts` は `isPreview` のとき `SOROU_PREVIEW_DB_NAME` / `SOROU_PREVIEW_DB_ID` から D1 を解決し、未設定なら例外を投げてデプロイを失敗させる（本番 DB への誤接続を防ぐ）。
+- Cron Triggers / Route / Queue consumer はプレビューには適用されない（プレビューで scheduled を試す場合はテスト用ルート経由で呼ぶ）。
 - D1 は無料枠で最大10データベース。多数の PR が同時に開くと上限に達する可能性がある。
 - フォークからの PR は Secrets にアクセスできないため、プレビューデプロイはスキップされる。
 - 同じ PR への連続 push は concurrency 制御により直列化され、古いジョブはキャンセルされる。

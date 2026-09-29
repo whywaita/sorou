@@ -13,7 +13,11 @@ concurrency:
 
 env:
   PR_NUMBER: ${{ github.event.pull_request.number }}
-  WORKER_NAME: sorou-pr-${{ github.event.pull_request.number }}
+  # Worker Preview name. Previews are scoped to the `sorou` Worker, so no
+  # per-PR Worker name is needed.
+  PREVIEW_NAME: pr-${{ github.event.pull_request.number }}
+  # Throwaway D1 database for this PR. cloudflare.config.ts binds the Preview
+  # to it through SOROU_PREVIEW_DB_NAME / SOROU_PREVIEW_DB_ID.
   DB_NAME: sorou-pr-${{ github.event.pull_request.number }}-db
 
 jobs:
@@ -22,18 +26,18 @@ jobs:
     # Skip forked PRs (no access to secrets)
     if: github.event.pull_request.head.repo.fork == false
 
-    steps:
-      - uses: actions/checkout@v4
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
-      - uses: actions/setup-node@v4
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: "22"
 
       - run: npm ci
-
-      # Add wrangler to PATH (installed as devDependency)
-      - name: Add node_modules/.bin to PATH
-        run: echo "$PWD/node_modules/.bin" >> "$GITHUB_PATH"
 
       # Type check
       - name: Type check
@@ -43,79 +47,80 @@ jobs:
       - name: Run tests
         run: npm test
 
-      # Recreate D1 database (fresh DB each deploy)
+      # Recreate the D1 database (fresh database on every push)
       - name: Recreate D1 database
         id: d1
         run: |
-          set -e
-          # Delete existing DB if present
-          if wrangler d1 info "$DB_NAME" > /dev/null 2>&1; then
-            echo "🗑 Deleting existing D1 database '${DB_NAME}'"
-            echo 'y' | wrangler d1 delete "$DB_NAME" --skip-confirmation 2>&1 || true
+          set -euo pipefail
+
+          existing_id=$(npx --no-install cf d1 list | jq -r --arg name "$DB_NAME" \
+            'if type == "object" and has("result") then .result else . end
+             | (if type == "array" then . else [] end)
+             | .[] | select(.name == $name) | (.uuid // .id // empty)' | head -1 || true)
+          if [ -n "$existing_id" ]; then
+            echo "🗑 Deleting existing D1 database '${DB_NAME}' (${existing_id})"
+            npx --no-install cf d1 delete "$existing_id" --force
           fi
-          # Create new DB
+
           echo "🆕 Creating D1 database '${DB_NAME}'"
-          CREATE_OUT=$(echo 'y' | wrangler d1 create "$DB_NAME" 2>&1)
-          echo "$CREATE_OUT"
-          DB_ID=$(echo "$CREATE_OUT" | grep -oP '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' | head -1)
-          if [ -z "$DB_ID" ]; then
-            echo "❌ Failed to extract database ID from output"
+          created=$(npx --no-install cf d1 create --name "$DB_NAME")
+          echo "$created"
+
+          db_id=$(printf '%s' "$created" | jq -r \
+            'if type == "object" and has("result") then .result else . end
+             | (.uuid // .id // empty)' || true)
+          if [ -z "$db_id" ]; then
+            # Fall back for outputs that are not the JSON shape above.
+            db_id=$(printf '%s' "$created" \
+              | grep -oE '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' | head -1 || true)
+          fi
+          if [ -z "$db_id" ]; then
+            echo "❌ Failed to extract the database ID from the cf output"
             exit 1
           fi
-          echo "   database_id = ${DB_ID}"
-          echo "db_id=${DB_ID}" >> "$GITHUB_OUTPUT"
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
-      # Apply D1 migrations
+          echo "   database_id = ${db_id}"
+          echo "db_id=${db_id}" >> "$GITHUB_OUTPUT"
+
+      # Apply D1 migrations to the fresh database
       - name: Apply D1 migrations
         run: |
-          set -e
-          for f in ./drizzle/migrations/*.sql; do
-            echo "▶ Running migration: $f"
-            wrangler d1 execute "$DB_NAME" --remote --file="$f"
-          done
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          npx --no-install cf d1 migrations apply "${{ steps.d1.outputs.db_id }}" \
+            --dir ./drizzle/migrations
 
-      # Generate PR-specific wrangler config (replace placeholders in template)
-      - name: Generate PR-specific wrangler config
-        run: |
-          CONFIG="wrangler.pr-${PR_NUMBER}.toml"
-          sed -e "s/__WORKER_NAME__/${WORKER_NAME}/g" \
-              -e "s/__D1_NAME__/${DB_NAME}/g" \
-              -e "s/__D1_ID__/${{ steps.d1.outputs.db_id }}/g" \
-              wrangler.pr.toml > "$CONFIG"
-          echo "Generated $CONFIG"
-          cat "$CONFIG"
-
-      # Deploy Worker
-      - name: Deploy to Cloudflare Workers
+      # Deploy the Worker Preview (builds against the preview D1 binding)
+      - name: Deploy preview
         id: deploy
-        run: |
-          CONFIG="wrangler.pr-${PR_NUMBER}.toml"
-          DEPLOY_OUTPUT=$(wrangler deploy --config "$CONFIG" 2>&1)
-          echo "$DEPLOY_OUTPUT"
-
-          # Extract workers.dev URL
-          PREVIEW_URL=$(echo "$DEPLOY_OUTPUT" | grep -oP 'https://[a-zA-Z0-9._-]+\.workers\.dev' | head -1)
-          if [ -z "$PREVIEW_URL" ]; then
-            echo "⚠ Could not extract workers.dev URL from deploy output"
-            PREVIEW_URL="(URL could not be determined — check Actions log)"
-          fi
-          echo "preview_url=${PREVIEW_URL}" >> "$GITHUB_OUTPUT"
-          echo "🔗 ${PREVIEW_URL}"
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          SOROU_PREVIEW_DB_NAME: ${{ env.DB_NAME }}
+          SOROU_PREVIEW_DB_ID: ${{ steps.d1.outputs.db_id }}
+        run: |
+          set -euo pipefail
+
+          output=$(npx --no-install cf previews deploy "$PREVIEW_NAME")
+          echo "$output"
+
+          preview_url=$(printf '%s' "$output" | jq -r \
+            'if type == "object" and has("result") then .result else . end
+             | (.preview_urls // empty)
+             | (if type == "array" then .[0] else . end) // empty' 2>/dev/null || true)
+          if [ -z "$preview_url" ] || [ "$preview_url" = "null" ]; then
+            preview_url=$(printf '%s' "$output" \
+              | grep -oE 'https://[a-zA-Z0-9._-]+\.workers\.dev' | head -1 || true)
+          fi
+          if [ -z "$preview_url" ]; then
+            echo "⚠ Could not extract the Preview URL from the deploy output"
+            preview_url="(URL could not be determined — check Actions log)"
+          fi
+
+          echo "preview_url=${preview_url}" >> "$GITHUB_OUTPUT"
+          echo "🔗 ${preview_url}"
 
       # Get PR title for Discord notification
       - name: Get PR title
         id: pr_info
         run: |
-          PR_TITLE=$(gh pr view ${{ github.event.pull_request.number }} --json title --jq '.title')
+          PR_TITLE=$(gh pr view "$PR_NUMBER" --json title --jq '.title')
           echo "pr_title=${PR_TITLE}" >> "$GITHUB_OUTPUT"
         env:
           GH_TOKEN: ${{ github.token }}
@@ -127,15 +132,13 @@ jobs:
           PR_TITLE: ${{ steps.pr_info.outputs.pr_title }}
           BRANCH: ${{ github.event.pull_request.head.ref }}
         run: |
-          PR_NUMBER="${{ github.event.pull_request.number }}"
-
           curl -s -X POST "${{ secrets.DISCORD_WEBHOOK_URL }}" \
             -H "Content-Type: application/json" \
             -d "$(cat <<EOF
           {
             "embeds": [{
-              "title": "🚀 Preview environment deployed",
-              "description": "🔗 ${PREVIEW_URL}\n\n📋 **#${PR_NUMBER}** ${PR_TITLE}\n🌿 \`${BRANCH}\`",
+              "title": "🚀 Preview deployed",
+              "description": "🔗 ${PREVIEW_URL}\n\n📋 **#${PR_NUMBER}** ${PR_TITLE}\n🌿 \`${BRANCH}\`\n🧪 Preview: \`${PREVIEW_NAME}\` · D1: \`${DB_NAME}\`",
               "color": 5763719,
               "footer": { "text": "sorou PR Preview" }
             }]

@@ -6,3 +6,4 @@ dist
 wrangler.pr-*.toml
 .hermes/
 
+.cloudflare

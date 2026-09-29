@@ -31,6 +31,16 @@ AI エージェント／コントリビューター向けの作業ガイド。�
 
 `make deploy` は `CF_API_TOKEN` と `CF_ACCOUNT_ID` の環境変数が必須。
 
+## cf CLI への移行（進行中）
+
+Cloudflare の新しい CLI `cf` に段階的に移行している。現時点では設定ファイルのみ移行済みで、CI はまだ Wrangler 経由で動いている。
+
+- 設定: `cloudflare.config.ts`（Worker 本体の定義）+ `wrangler.config.ts`（Wrangler に委譲するビルド設定）
+- ローカル実行: `npx cf dev` / `npx cf deploy --dry-run` / `npx cf build`
+- `wrangler.toml` は `deploy.yaml` / `pr-preview.yaml` が Wrangler を使っているため当面残す。**値を変更する場合は `cloudflare.config.ts` と揃えること**（cf は `wrangler.toml` を読まない）
+- 依存: `cf`（beta）と `wrangler` >= 4.136（cf の build / dev / deploy が要求）、`@cloudflare/workers-types` v5
+
+
 ## 開発ルール
 
 - **TDD**: Red-Green-Refactor。まず失敗するテストを書き、通る最小限のコードを書き、リファクタリングする。各機能にハッピーパスとエラーパスの両方のテストを含める。
